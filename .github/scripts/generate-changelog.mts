@@ -24,10 +24,10 @@
 
 export interface Commit {
   subject: string;
-  // Whether this commit touched a file the desktop app is built from. The
-  // workflow decides that with the same path filter it uses to decide whether
-  // to release at all.
-  touchedApp: boolean;
+  // Whether this commit changed something the app actually ships. Not the
+  // same question as "did it touch a path the release gate calls the app":
+  // see SHIPPED and changesBehaviour below for the two ways those differ.
+  shipped: boolean;
 }
 
 // The line that marks a section as machine-written. Kept as an HTML comment so
@@ -37,15 +37,47 @@ export const GENERATED_MARKER =
   "<!-- Written from commit subjects because this version had no section. " +
   "Rewrite in player language: what changed, and why they would care. -->";
 
+// What the app's behaviour actually comes from.
+//
+// Deliberately narrower than the release gate's filter. The gate also counts
+// package.json, the lockfile, the tsconfigs and the Vite config, because
+// changing any of them means the executable has to be rebuilt - that is the
+// right rule for deciding whether to release. It is the wrong rule for
+// deciding whether there is anything to tell a player, and using it put
+// "Remove the unused design tooling" in every update window when v2.14.10
+// removed a preview pipeline nobody was running.
+export const SHIPPED = /^(src\/|assets\/)/;
+
+// A line that only a reader sees, never the program.
+const COMMENT = /^(\/\/|\/\*|\*\/|\*|\{\/\*)/;
+
+// Whether a diff of shipped files changes anything the app runs.
+//
+// Touching src/ is not enough on its own: the same v2.14.10 commit rewrote
+// three code comments that named a directory it was deleting, which is a real
+// change to the repository and no change at all to the app. A commit whose
+// every added and removed line is a comment or blank has nothing to announce.
+export function changesBehaviour(diff: string): boolean {
+  for (const line of diff.split("\n")) {
+    // Only added and removed lines matter, and the +++/--- file headers are
+    // not among them.
+    if (!/^[+-]/.test(line) || /^(\+\+\+|---)/.test(line)) continue;
+    const text = line.slice(1).trim();
+    if (text === "" || COMMENT.test(text)) continue;
+    return true;
+  }
+  return false;
+}
+
 const RELEASE_SUBJECT = /^Release v\d+\.\d+\.\d+/i;
 const MERGE_SUBJECT = /^Merge (branch|pull request|remote-tracking)/i;
 
 export function usableCommits(commits: Commit[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const { subject, touchedApp } of commits) {
+  for (const { subject, shipped } of commits) {
     const line = subject.trim();
-    if (!line || !touchedApp) continue;
+    if (!line || !shipped) continue;
     if (RELEASE_SUBJECT.test(line) || MERGE_SUBJECT.test(line)) continue;
     // A subject repeated across a rebase or a revert-and-redo says the same
     // thing twice in the notes
@@ -90,7 +122,7 @@ export function insertSection(
 
 // Run directly:
 //
-//   generate-changelog.mts <version> <base-sha> <app-path-regex>
+//   generate-changelog.mts <version> <base-sha>
 //
 // Rewrites CHANGELOG.md in place and prints what it did, or prints "kept" and
 // changes nothing when the version already has a section.
@@ -101,14 +133,13 @@ if (
   const { execFileSync } = await import("node:child_process");
   const { readFileSync, writeFileSync } = await import("node:fs");
 
-  const [version, base, appPattern] = process.argv.slice(2);
-  if (!version || !base || !appPattern) {
-    process.stderr.write("usage: generate-changelog.mts <version> <base-sha> <app-regex>\n");
+  const [version, base] = process.argv.slice(2);
+  if (!version || !base) {
+    process.stderr.write("usage: generate-changelog.mts <version> <base-sha>\n");
     process.exit(2);
   }
 
   const git = (args: string[]) => execFileSync("git", args, { encoding: "utf8" });
-  const appRe = new RegExp(appPattern);
 
   // One commit per line, oldest first, so the notes read in the order the work
   // landed. %H and %s are separated by a tab, which a subject cannot contain.
@@ -119,7 +150,13 @@ if (
     .map((line) => {
       const [sha, ...rest] = line.split("\t");
       const files = git(["show", "--name-only", "--format=", sha]).split("\n").filter(Boolean);
-      return { subject: rest.join("\t"), touchedApp: files.some((f) => appRe.test(f)) };
+      const shippedFiles = files.filter((f) => SHIPPED.test(f));
+      // Ask for the diff of the shipped files alone, with no context lines, so
+      // what comes back is only what this commit added and removed in them.
+      const diff = shippedFiles.length
+        ? git(["show", "--unified=0", "--format=", sha, "--", ...shippedFiles])
+        : "";
+      return { subject: rest.join("\t"), shipped: changesBehaviour(diff) };
     });
 
   const changelog = readFileSync("CHANGELOG.md", "utf8");

@@ -51,11 +51,10 @@ jobs:
       release: ${{ steps.decide.outputs.release }}
       version: ${{ steps.decide.outputs.version }}
       bump: ${{ steps.decide.outputs.bump }}
-      # The commit this push is measured against, and the paths that count as
-      # the app. The release job generates notes from the same range and the
-      # same filter the gate used to decide there was anything to release.
+      # The commit this push is measured against, so the release job can read
+      # the same range of commits the gate just decided on. It applies its own,
+      # narrower idea of what is worth telling a player about.
       base: ${{ steps.decide.outputs.base }}
-      appPaths: ${{ steps.decide.outputs.appPaths }}
     defaults:
       run:
         shell: bash
@@ -160,7 +159,6 @@ jobs:
             echo "version=$VERSION"
             echo "bump=$BUMP"
             echo "base=$BASE"
-            echo "appPaths=$APP"
           } >> "$GITHUB_OUTPUT"
 
           if [ "$BUMP" = "true" ]; then
@@ -285,7 +283,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && needs.gate.outputs.base != ''
         run: |
           RESULT=$(node .github/scripts/generate-changelog.mts \
-            "$VERSION" "${{ needs.gate.outputs.base }}" '${{ needs.gate.outputs.appPaths }}')
+            "$VERSION" "${{ needs.gate.outputs.base }}")
           echo "Notes for v$VERSION: $RESULT"
           if [ "${RESULT% *}" = "generated" ]; then
             echo "generated=true" >> "$GITHUB_OUTPUT"

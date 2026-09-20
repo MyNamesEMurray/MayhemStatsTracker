@@ -7,15 +7,17 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  changesBehaviour,
   GENERATED_MARKER,
   generateSection,
   insertSection,
+  SHIPPED,
   usableCommits,
   type Commit,
 } from "../.github/scripts/generate-changelog.mts";
 
-const app = (subject: string): Commit => ({ subject, touchedApp: true });
-const site = (subject: string): Commit => ({ subject, touchedApp: false });
+const app = (subject: string): Commit => ({ subject, shipped: true });
+const site = (subject: string): Commit => ({ subject, shipped: false });
 
 describe("usableCommits", () => {
   it("keeps commits that touched the app, in order", () => {
@@ -126,5 +128,89 @@ How to write these.
     const out = insertSection("# Changelog\n\nPreamble.\n", "v1.0.0", "2026-01-01", "- first");
     assert.match(out, /^## v1\.0\.0 - 2026-01-01$/m);
     assert.match(out, /^# Changelog/);
+  });
+});
+
+// Which commits are worth telling a player about at all.
+//
+// The release gate and this generator ask different questions. The gate asks
+// whether the executable has to be rebuilt, and package.json or a tsconfig
+// means yes. The generator asks whether anything a player can see changed,
+// and neither of those does. Conflating the two put "Remove the unused design
+// tooling" in every update window when v2.14.10 deleted a preview pipeline.
+describe("SHIPPED", () => {
+  it("counts the code and art the app is built from", () => {
+    for (const f of ["src/main/index.ts", "src/renderer/pages/Live.tsx", "assets/icon.png"]) {
+      assert.ok(SHIPPED.test(f), `${f} should count`);
+    }
+  });
+
+  it("does not count the things that only force a rebuild", () => {
+    // Every one of these is in the gate's filter, and rightly so
+    for (const f of [
+      "package.json",
+      "package-lock.json",
+      "tsconfig.web.json",
+      "electron.vite.config.ts",
+    ]) {
+      assert.equal(SHIPPED.test(f), false, `${f} should not count`);
+    }
+  });
+
+  it("does not count the repository around the app", () => {
+    for (const f of [
+      "website/src/App.tsx",
+      "supabase/migrations/1.sql",
+      "test/stats.test.mts",
+      "README.md",
+      "docs/images/app-overview.png",
+      ".github/workflows/release.yml",
+    ]) {
+      assert.equal(SHIPPED.test(f), false, `${f} should not count`);
+    }
+  });
+});
+
+describe("changesBehaviour", () => {
+  it("sees a real change", () => {
+    assert.equal(changesBehaviour("@@\n-const A = 1;\n+const A = 2;"), true);
+  });
+
+  it("ignores a comment-only diff", () => {
+    // The v2.14.10 case: three comments rewritten because they named a
+    // directory the same commit deleted. Real work, nothing a player sees.
+    const diff =
+      "@@\n-// design-sync previews needed a shim\n+// anything outside Electron needed a shim";
+    assert.equal(changesBehaviour(diff), false);
+  });
+
+  it("ignores every comment shape the codebase uses", () => {
+    for (const c of ["// line", "/* open", " * middle", " */", "{/* jsx */}"]) {
+      assert.equal(changesBehaviour(`@@\n+${c}`), false, `${c} should read as a comment`);
+    }
+  });
+
+  it("ignores blank-line churn", () => {
+    assert.equal(changesBehaviour("@@\n+\n-   \n"), false);
+  });
+
+  it("is not fooled by the diff's own file headers", () => {
+    // --- and +++ start with - and +, and the path after them is not code
+    const diff =
+      "diff --git a/src/x.ts b/src/x.ts\n--- a/src/x.ts\n+++ b/src/x.ts\n@@\n+// just a note";
+    assert.equal(changesBehaviour(diff), false);
+  });
+
+  it("sees a real change sitting beside a comment", () => {
+    assert.equal(changesBehaviour("@@\n+// why\n+const A = 2;"), true);
+  });
+
+  it("treats an empty diff as no change", () => {
+    // What a commit that touched no shipped file at all produces
+    assert.equal(changesBehaviour(""), false);
+  });
+
+  it("sees a deletion, not just an addition", () => {
+    assert.equal(changesBehaviour("@@\n-export function gone() {}"), true);
   });
 });

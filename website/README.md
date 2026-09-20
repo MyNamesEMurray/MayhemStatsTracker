@@ -54,6 +54,8 @@ In the Cloudflare dashboard, under the Worker's **Settings -> Build**:
 | Build command                        | `npm run build`                |
 | Deploy command                       | `npx wrangler deploy`          |
 | Non-production branch deploy command | `npx wrangler versions upload` |
+| Build watch paths (include)          | `website/*`, `src/shared/*`    |
+| Build watch paths (exclude)          | _empty_                        |
 
 `website` matters twice over. The repository root is the desktop app, whose
 `npm run build` runs `electron-vite` and never produces a site; and wrangler
@@ -72,3 +74,17 @@ it just needs the repository checked out whole, which is what Workers Builds
 and GitHub Actions do by default. Hosts that copy only the root directory into
 the build need that turned off: on Vercel, keep **Include source files outside
 of the Root Directory** enabled.
+
+That is also why `src/shared/*` is a watch path and not just `website/*`.
+Watching this directory alone would stop the site rebuilding when the tier
+cutoffs or the augment descriptions change, so a scoring fix would ship to the
+desktop app and leave the site quoting the old maths - the one thing sharing
+those modules is meant to rule out. If the site ever imports from somewhere
+else outside this directory, that path has to be added here too. The rest of
+`src/` is the desktop app and deliberately triggers nothing.
+
+Watch paths are dashboard state, not repository state: wrangler rejects a
+`build_watch_paths` field, so this table is the only record of them. They also
+only gate builds started by a push. A build runs whatever the paths say when a
+push carries no files, 3000 or more files, or 20 or more commits, and the
+daily rebuild reaches the site by its own route.

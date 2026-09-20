@@ -29,15 +29,7 @@ on Riot's end is news to everyone, so leave those unmarked.
 
 ## v2.14.11 - 2026-09-20
 
-<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
-
-- Hide changelog comments from the app's update window
-
-## v2.14.10 - 2026-09-20
-
-<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
-
-- Remove the unused design tooling
+- <!--fixes:v2.14.8--> **The update window no longer shows you a note meant for whoever writes these.** Some release notes arrived with a line of editing instructions above them, starting `<!--`. It was supposed to be invisible, and it is on the release page, but this window draws the text as it comes. It is filtered out now.
 
 ## v2.14.9 - 2026-09-20
 

@@ -14,6 +14,26 @@
 // other case: a release that changed plenty and says nothing, which is what
 // v2.14.5 did.
 
+// Notes to whoever edits the changelog next, which the release body should
+// not carry at all.
+//
+// The app learned to hide comments in its update window, but only the app
+// that has that fix. Anyone upgrading from a version released before it runs
+// the old code and sees whatever is in the body, so the marker is better not
+// published in the first place. It stays in CHANGELOG.md, where it is for.
+//
+// The fixes marker is the exception and has to survive: the app reads it to
+// decide whether a bullet is shown to this particular reader.
+const FIXES = /<!--\s*fixes:/i;
+const OWN_LINE_COMMENT = /^[ \t]*<!--[\s\S]*?-->[ \t]*\r?\n?/gm;
+const INLINE_COMMENT = /<!--[\s\S]*?-->/g;
+
+function withoutEditorNotes(text: string): string {
+  return text
+    .replace(OWN_LINE_COMMENT, (m) => (FIXES.test(m) ? m : ""))
+    .replace(INLINE_COMMENT, (m) => (FIXES.test(m) ? m : ""));
+}
+
 // A heading opens a section: "## v2.14.5 - 2026-08-28". The version has to
 // match to its end, so v2.14.5 does not answer for v2.14.50.
 function headingFor(version: string): RegExp {
@@ -36,7 +56,7 @@ export function extractSection(changelog: string, version: string): string {
     if (line.startsWith("## ")) break;
     body.push(line);
   }
-  return body.join("\n").trim();
+  return withoutEditorNotes(body.join("\n")).trim();
 }
 
 export function hasSection(changelog: string, version: string): boolean {

@@ -100,3 +100,50 @@ describe("the real CHANGELOG.md", () => {
     }
   });
 });
+
+// What gets published, as opposed to what stays in CHANGELOG.md.
+//
+// The generated-section marker is a note to whoever edits the changelog next.
+// The app hides comments in its update window now, but only the app that has
+// that fix; anyone upgrading from an older one runs old code and sees the raw
+// body. So it is better never published.
+describe("editor notes in a published body", () => {
+  const MARKER =
+    "<!-- Written from commit subjects because this version had no section. " +
+    "Rewrite in player language: what changed, and why they would care. -->";
+
+  const withMarker = `# Changelog
+
+## v3.0.0 - 2026-09-20
+
+${MARKER}
+
+- Something that changed.
+
+## v2.9.9 - 2026-09-01
+
+- <!--fixes:v2.9.0--> **A fix.** For something we broke.
+`;
+
+  it("leaves the generator's note out of the body", () => {
+    const out = extractSection(withMarker, "v3.0.0");
+    assert.doesNotMatch(out, /<!--/);
+    assert.doesNotMatch(out, /Rewrite in player language/);
+    assert.match(out, /- Something that changed\./);
+  });
+
+  it("leaves no blank line where the note was", () => {
+    assert.equal(extractSection(withMarker, "v3.0.0"), "- Something that changed.");
+  });
+
+  it("still publishes the fixes marker, which the app reads", () => {
+    // Without it the app cannot tell who the bullet is for
+    assert.match(extractSection(withMarker, "v2.9.9"), /<!--fixes:v2\.9\.0-->/);
+  });
+
+  it("a section of nothing but a note has nothing to publish", () => {
+    const only = `# Changelog\n\n## v3.0.0 - 2026-09-20\n\n${MARKER}\n`;
+    assert.equal(extractSection(only, "v3.0.0"), "");
+    assert.equal(hasSection(only, "v3.0.0"), false);
+  });
+});

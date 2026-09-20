@@ -18,7 +18,9 @@ const CHART_DAYS = 45;
 const LABEL_MIN_SPAN = 4;
 
 // The impact of the crowdsourced database: every number here exists because
-// players opted in - there is no other source of ARAM Mayhem data.
+// of the one-time seed at launch, which most of it still comes from, or
+// because a player opted in since - the about and privacy pages describe
+// both. There is no other source of ARAM Mayhem data.
 export default function CommunityPage() {
   const [totals, setTotals] = useState<CommunityTotals | null>(null);
   const [perDay, setPerDay] = useState<GamesPerDayRow[]>([]);

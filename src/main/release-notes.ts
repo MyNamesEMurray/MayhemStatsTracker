@@ -1,5 +1,5 @@
 import { compareVersions } from "../shared/version";
-import { withoutFooter } from "./release-footer";
+import { withoutComments, withoutFooter } from "./release-footer";
 
 export interface ReleaseSummary {
   version: string;
@@ -35,12 +35,16 @@ export function buildReleaseNotes(
 
   const sections: string[] = [];
   for (const release of newer.slice(0, maxSections)) {
-    const body = withoutFooter(release.body)
-      .split("\n")
-      .map((line) => applyMarker(line, currentVersion))
-      .filter((line): line is string => line !== null)
-      .join("\n")
-      .trim();
+    // The fixes marker is read per line, because it decides whether the whole
+    // bullet is shown. Every other comment is simply hidden, after, so one
+    // spanning lines goes too.
+    const body = withoutComments(
+      withoutFooter(release.body)
+        .split("\n")
+        .map((line) => applyMarker(line, currentVersion))
+        .filter((line): line is string => line !== null)
+        .join("\n"),
+    ).trim();
     // A release whose every bullet was filtered out has nothing left to say
     if (body) sections.push(`## v${release.version}\n${body}`);
   }

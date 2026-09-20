@@ -29,15 +29,11 @@ on Riot's end is news to everyone, so leave those unmarked.
 
 ## v2.14.9 - 2026-09-20
 
-<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
-
-- Stop champion names drawing over the tier badge at 1400-1499px
+- **Champion names no longer overlap the tier badge on the tier list.** At certain window widths the name column was squeezed so far that every name on the board drew straight over the badge beside it, and the header read "CHAMPITIER". It only happened in a narrow band of widths, but that band covers a lot of laptops. [MayhemStats.com](https://mayhemstats.com/) had it too.
 
 ## v2.14.8 - 2026-09-20
 
-<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
-
-- Publish the code signing policy SignPath asks for and wire signing into releases
+- **Groundwork for signed downloads.** Windows SmartScreen warns about the installer on first run because the executables are not code signed. The release build now submits them to the [SignPath Foundation](https://signpath.org/) to be signed, and the download page and README carry the signing policy SignPath asks for. The certificate is still being issued, so releases until then are unsigned and the warning stays; nothing you need to do either way.
 
 ## v2.14.7 - 2026-08-28
 

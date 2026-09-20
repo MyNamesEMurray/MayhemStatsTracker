@@ -140,8 +140,17 @@ body {
    1280px window without squeezing every one of them. Only the separate
    Kills, Deaths and Assists columns drop out, and the KDA column beside them
    prints the same three numbers at every width, so no figure leaves the
-   board - it just stops having a column of its own. */
-@media (max-width: 1399px) {
+   board - it just stops having a column of its own.
+
+   The cutoff is 1500 and not 1400, which is where it started. Champion is the
+   one column with no width of its own, so under `table-fixed` it is handed
+   whatever the fixed columns leave. Letting the three detail columns in at
+   1400px left it 38px, and a name is not 38px wide: with `whitespace-nowrap`
+   it does not wrap or clip, it simply draws over the Tier badge beside it.
+   Every name on the board overlapped, by up to 71px, at every width from
+   1400 to 1499 - a band that includes a very common laptop. The columns need
+   1500px to fit, so that is when they arrive. */
+@media (max-width: 1499px) {
   .stat-board .board-detail {
     display: none;
   }

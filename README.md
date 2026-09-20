@@ -2,7 +2,7 @@
 
 Desktop app for tracking ARAM Mayhem match history in League of Legends. Connects to the League Client (LCU) to automatically record matches and display stats - and, if you opt in, contributes your games **anonymously** to the community database behind the public stats site:
 
-**[MayhemStats.com](https://mayhemstats.com/)** - augment and champion tier lists, win rates, and per-champion ideal builds, powered entirely by games contributed by players running this app.
+**[MayhemStats.com](https://mayhemstats.com/)** - augment and champion tier lists, win rates, and per-champion ideal builds, powered by games contributed by players running this app, plus a one-time seed at launch described on the site's [privacy page](https://mayhemstats.com/privacy/#seed).
 
 <img width="1306" height="820" alt="image" src="https://github.com/user-attachments/assets/5fc0ad6d-5f68-4cf3-a775-fb3e8f379ac9" />
 
@@ -19,7 +19,7 @@ the full post-game breakdown of your own matches. So this project crowdsources
 it: the tracker reads your matches from your own client, and players who opt
 in pool anonymized copies into a shared database. Every win rate and ideal
 build on [MayhemStats.com](https://mayhemstats.com/) comes from actual ARAM
-Mayhem games - contributed by players, because there is no other source.
+Mayhem games - read from the client, because there is no other source.
 
 ## Features
 

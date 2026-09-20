@@ -23,10 +23,10 @@
         MayhemStats shows community-powered tier lists, win rates, and ideal builds for
         <strong>ARAM Mayhem</strong>, the limited-time League of Legends game mode where every
         player drafts augments at level breakpoints on the Howling Abyss. The numbers here are not
-        scraped or estimated - every game in the database was contributed voluntarily and
-        anonymously by players running the free, open-source
-        <a href="/download/">MayhemStats Tracker</a>
-        desktop app.
+        scraped or estimated - every game in the database is a real Mayhem match, read from the
+        League client and stored anonymously: most contributed by players running the free,
+        open-source <a href="/download/">MayhemStats Tracker</a> desktop app, the rest from a
+        one-time seed described below.
       </p>
 
       <h2>Why this exists</h2>
@@ -41,8 +41,8 @@
       <p>
         MayhemStats is the community's answer: crowdsource the real thing. The tracker reads matches
         from each player's own client, and everyone who opts in pools anonymized games into a shared
-        database. Every number on this site comes from actual ARAM Mayhem games contributed by
-        players - there is no other source, which is also why
+        database. Every number on this site comes from actual ARAM Mayhem games read from the client
+        - there is no other source, which is also why
         <a href="/download/">running the tracker</a> and opting in directly makes the stats better
         for everyone.
       </p>
@@ -56,6 +56,17 @@
         summoner names, Riot IDs, or account identifiers - is ever uploaded, and the server's
         database has no columns to store identity even if it were sent. Games are deduplicated, so
         two friends contributing the same match count it once.
+      </p>
+
+      <h3>The one-time seed</h3>
+      <p>
+        A crowdsourced database starts empty, and empty stats convince nobody to install anything.
+        So at launch, in September 2026, the maintainer seeded the database once with the match
+        histories of roughly 2,100 players they had shared games with over the previous year, about
+        130,000 games, read through the League client the same way the tracker reads your own
+        matches and uploaded through the same anonymizing code. Everything since comes from players
+        who opted in. The <a href="/privacy/#seed">privacy policy</a> has the details, including why
+        those records are as anonymous as any other.
       </p>
 
       <h2>How Score is calculated</h2>

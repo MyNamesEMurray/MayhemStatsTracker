@@ -24,7 +24,7 @@
     <main>
       <a class="back" href="/">← Back to the stats</a>
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: August 9, 2026</p>
+      <p class="updated">Last updated: September 20, 2026</p>
 
       <p>
         MayhemStats (mayhemstats.com) is a community fan project showing aggregate statistics for
@@ -60,6 +60,30 @@
         <strong>Settings → Community Stats → Delete my contributions</strong> in the app removes
         every record your install has shared; matches no other player contributed are deleted
         entirely.
+      </p>
+
+      <h2 id="seed">The one-time seed of the database</h2>
+      <p>
+        Not every game in the database arrived through a player's opt-in. When the project launched,
+        the maintainer seeded it once, in September 2026, with the ARAM Mayhem match histories of
+        roughly 2,100 players they had shared games with over the previous year - about 130,000
+        games. The League client can show any player's recent match history, and that is what was
+        read: the same post-game breakdown the tracker reads for your own games.
+      </p>
+      <p>
+        Those games went through the same upload code as every other contribution, so a seeded
+        record has exactly the shape described above and nothing more: champions, augments, items,
+        combat lines, and match metadata for the ten players, with no summoner names, Riot IDs,
+        PUUIDs, or any other identifier. Because the records carry no identity, a seeded game cannot
+        be traced back to any of the players in it, by us or by anyone else - and for the same
+        reason it cannot be deleted on request for a particular player, since there is nothing to
+        match a request against. Seeded games are counted once like any other game, so a match that
+        one of its players later contributes is not double counted.
+      </p>
+      <p>
+        This is not planned as a regular practice, but it is not ruled out either: a new patch or a
+        new queue can leave the database too thin to rank anything. If it is done again, this
+        section will say when and how much.
       </p>
 
       <h2>Data collected by this website</h2>

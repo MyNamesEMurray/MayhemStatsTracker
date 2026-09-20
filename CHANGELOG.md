@@ -27,6 +27,10 @@ v2.10.0 will. GitHub hides the comment when rendering, and only fixes for
 bugs of our own making need it - a fix for a long-standing bug or something
 on Riot's end is news to everyone, so leave those unmarked.
 
+## v2.14.12 - 2026-09-20
+
+- <!--fixes:v2.14.8--> **Links in these notes read as links now.** A line mentioning the website came through as `[MayhemStats.com](https://mayhemstats.com/)`, brackets, URL and all, in the middle of a sentence. This window draws text rather than rendering markdown, and it only knew how to handle bold. Links are now shown by name and open in your browser when clicked, and backticks no longer show up around things like `<!--`.
+
 ## v2.14.11 - 2026-09-20
 
 - <!--fixes:v2.14.8--> **The update window no longer shows you a note meant for whoever writes these.** Some release notes arrived with a line of editing instructions above them, starting `<!--`. It was supposed to be invisible, and it is on the release page, but this window draws the text as it comes. It is filtered out now.

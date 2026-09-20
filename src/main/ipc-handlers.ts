@@ -268,8 +268,18 @@ export function registerIpcHandlers() {
     return updater.downloadAndInstall(getMainWindow(), assetUrl);
   });
 
+  // Only ever a web page. openExternal hands the URL to the operating
+  // system, which will act on schemes that are not browsing at all, and the
+  // update window now draws links parsed out of a release body.
   ipcMain.handle("app:open-url", (_event, url: string) => {
-    shell.openExternal(url);
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+    shell.openExternal(parsed.href);
   });
 
   // Data export/import

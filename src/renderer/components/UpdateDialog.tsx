@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { parseInline } from "../../shared/inline-markdown";
 import { Button } from "../../shared/ui/primitives";
 import type { UpdateInfo } from "../lib/types";
 import { RefreshIcon } from "../../shared/ui/icons";
@@ -36,11 +37,29 @@ export default function UpdateDialog({
   const sizeMb = update.assetSize ? (update.assetSize / 1024 / 1024).toFixed(1) : null;
 
   // Release notes are simple markdown bullets; render them as text lines so
-  // nothing needs a markdown dependency
+  // nothing needs a markdown dependency. parseInline handles what a bullet
+  // actually contains - links, bold, code spans - because stripping only the
+  // bold left "[MayhemStats.com](https://mayhemstats.com/)" sitting in the
+  // middle of a sentence written for people who do not read markdown.
   const noteLines = (update.notes ?? "")
     .split("\n")
-    .map((l) => l.replace(/\*\*([^*]+)\*\*/g, "$1").trimEnd())
+    .map((l) => l.trimEnd())
     .filter((l, i, arr) => l.trim() !== "" || (i > 0 && arr[i - 1].trim() !== ""));
+
+  const drawn = (line: string) =>
+    parseInline(line).map((seg, i) =>
+      seg.href ? (
+        <button
+          key={i}
+          onClick={() => window.api.openUrl(seg.href!)}
+          className="text-lol-gold hover:text-lol-gold-light transition-colors cursor-pointer"
+        >
+          {seg.text}
+        </button>
+      ) : (
+        <span key={i}>{seg.text}</span>
+      ),
+    );
 
   return (
     <div
@@ -62,14 +81,14 @@ export default function UpdateDialog({
               line.startsWith("- ") ? (
                 <div key={i} className="flex gap-1.5">
                   <span className="text-lol-gold shrink-0">•</span>
-                  <span>{line.slice(2)}</span>
+                  <span>{drawn(line.slice(2))}</span>
                 </div>
               ) : line.startsWith("#") ? (
                 <div key={i} className="font-semibold text-lol-text-bright mt-1">
-                  {line.replace(/^#+\s*/, "")}
+                  {drawn(line.replace(/^#+\s*/, ""))}
                 </div>
               ) : (
-                <div key={i}>{line}</div>
+                <div key={i}>{drawn(line)}</div>
               ),
             )}
           </div>

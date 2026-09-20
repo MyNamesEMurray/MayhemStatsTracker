@@ -177,7 +177,7 @@
           <h3>Installer</h3>
           <a
             class="btn"
-            href="https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest/download/MayhemTracker-Setup.exe"
+            href="https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/latest/download/MayhemTracker-Setup.exe"
           >
             <svg
               width="15"
@@ -203,7 +203,7 @@
           <h3>Portable</h3>
           <a
             class="btn secondary"
-            href="https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest/download/MayhemTracker-Portable.exe"
+            href="https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/latest/download/MayhemTracker-Portable.exe"
           >
             <svg
               width="15"
@@ -227,7 +227,9 @@
 
       <p class="meta" id="release-meta">
         Windows 10 or 11, 64-bit · about 94&nbsp;MB ·
-        <a href="https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest">all releases</a>
+        <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/latest"
+          >all releases</a
+        >
       </p>
 
       <p class="both">
@@ -259,8 +261,8 @@
         <ul>
           <li>
             <strong>It is open source.</strong> Every line is public at
-            <a href="https://github.com/MyNamesEMurray/mayhem-tracker"
-              >github.com/MyNamesEMurray/mayhem-tracker</a
+            <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker"
+              >github.com/MyNamesEMurray/MayhemStatsTracker</a
             >, MIT licensed, and the downloads above are built from that source by a public GitHub
             Actions workflow - not uploaded by hand.
           </li>
@@ -292,7 +294,9 @@
         found in the file. To continue, click <strong>More info</strong> and then
         <strong>Run anyway</strong>. If you would rather verify first, GitHub publishes a SHA-256
         digest for every file on the
-        <a href="https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest">releases page</a>
+        <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/latest"
+          >releases page</a
+        >
         that you can compare against your download.
       </p>
 
@@ -305,11 +309,11 @@
       <p>
         Every release is built by
         <a
-          href="https://github.com/MyNamesEMurray/mayhem-tracker/blob/main/.github/workflows/release.yml"
+          href="https://github.com/MyNamesEMurray/MayhemStatsTracker/blob/main/.github/workflows/release.yml"
           >GitHub Actions</a
         >
         from the source in the
-        <a href="https://github.com/MyNamesEMurray/mayhem-tracker">public repository</a>, on
+        <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker">public repository</a>, on
         GitHub-hosted runners, and submitted for signing from that same workflow run. Nothing is
         built or signed on anyone's machine.
       </p>
@@ -352,7 +356,7 @@
         <strong>Settings → General → Check for updates</strong>. Updates install in the background
         and the app relaunches on its own - you never have to come back to this page. Every
         release's changes are written up in plain language in the
-        <a href="https://github.com/MyNamesEMurray/mayhem-tracker/blob/main/CHANGELOG.md"
+        <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker/blob/main/CHANGELOG.md"
           >changelog</a
         >.
       </p>
@@ -360,8 +364,8 @@
       <h2>Something not working?</h2>
       <p>
         Open an issue at
-        <a href="https://github.com/MyNamesEMurray/mayhem-tracker/issues"
-          >github.com/MyNamesEMurray/mayhem-tracker/issues</a
+        <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker/issues"
+          >github.com/MyNamesEMurray/MayhemStatsTracker/issues</a
         >. If the app isn't picking up your games,
         <strong>Settings → Developer → Sync diagnostics</strong> has a copy button that captures
         exactly what to include.
@@ -377,7 +381,7 @@
           <a href="/">Stats</a> · <a href="/guide/">ARAM Mayhem guide</a> ·
           <a href="/about/">About</a> · <a href="/community/">Community impact</a> ·
           <a href="/privacy/">Privacy</a> ·
-          <a href="https://github.com/MyNamesEMurray/mayhem-tracker">GitHub</a>
+          <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker">GitHub</a>
         </p>
       </footer>
     </main>
@@ -388,7 +392,7 @@
       (function () {
         var el = document.getElementById("release-meta");
         if (!el) return;
-        fetch("https://api.github.com/repos/MyNamesEMurray/mayhem-tracker/releases/latest")
+        fetch("https://api.github.com/repos/MyNamesEMurray/MayhemStatsTracker/releases/latest")
           .then(function (r) {
             if (!r.ok) throw new Error("no release");
             return r.json();
@@ -418,7 +422,7 @@
             }
             el.textContent = parts.join(" · ") + " · ";
             var a = document.createElement("a");
-            a.href = "https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest";
+            a.href = "https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/latest";
             a.textContent = "all releases";
             el.appendChild(a);
           })

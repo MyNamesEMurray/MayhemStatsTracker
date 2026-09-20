@@ -31,7 +31,7 @@ export default function TitleBar({ version }: { version: string }) {
         <button
           onClick={() =>
             window.api.openUrl(
-              `https://github.com/MyNamesEMurray/mayhem-tracker/releases/tag/v${version}`,
+              `https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/tag/v${version}`,
             )
           }
           title="View release notes"

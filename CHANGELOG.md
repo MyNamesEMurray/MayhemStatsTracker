@@ -27,6 +27,10 @@ v2.10.0 will. GitHub hides the comment when rendering, and only fixes for
 bugs of our own making need it - a fix for a long-standing bug or something
 on Riot's end is news to everyone, so leave those unmarked.
 
+## v2.14.13 - 2026-09-20
+
+- <!--fixes:v2.14.12--> **Updating from inside the app works again.** The repository was renamed, and the app checked the download link against the old name before installing anything. Every update was refused with "Unexpected download URL". The check now asks who published the file rather than what the repository is called, so a rename cannot break it again. If you were stuck, you can update from here as normal.
+
 ## v2.14.12 - 2026-09-20
 
 - <!--fixes:v2.14.8--> **Links in these notes read as links now.** A line mentioning the website came through as `[MayhemStats.com](https://mayhemstats.com/)`, brackets, URL and all, in the middle of a sentence. This window draws text rather than rendering markdown, and it only knew how to handle bold. Links are now shown by name and open in your browser when clicked, and backticks no longer show up around things like `<!--`.

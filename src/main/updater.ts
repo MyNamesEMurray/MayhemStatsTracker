@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from "electron";
+import { isOurReleaseAsset } from "../shared/update-url";
 import { spawn } from "child_process";
 import fs from "fs";
 import os from "os";
@@ -23,9 +24,9 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
     // The whole list, not just /latest: someone several versions behind should
     // read everything they're about to install, not only the last entry.
     const res = await fetch(
-      "https://api.github.com/repos/MyNamesEMurray/mayhem-tracker/releases?per_page=30",
+      "https://api.github.com/repos/MyNamesEMurray/MayhemStatsTracker/releases?per_page=30",
       {
-        headers: { "User-Agent": "mayhem-tracker" },
+        headers: { "User-Agent": "MayhemStatsTracker" },
       },
     );
     if (!res.ok) return { hasUpdate: false, error: "No releases found" };
@@ -78,7 +79,7 @@ export async function downloadAndInstall(
   if (!portableExe && !installed) {
     return { success: false, error: "In-app update only works in packaged builds" };
   }
-  if (!assetUrl.startsWith("https://github.com/MyNamesEMurray/mayhem-tracker/")) {
+  if (!isOurReleaseAsset(assetUrl)) {
     return { success: false, error: "Unexpected download URL" };
   }
 
@@ -104,7 +105,7 @@ export async function downloadAndInstall(
 
   const newExe = path.join(tmpDir, "mayhem-tracker-update.exe");
   try {
-    const res = await fetch(assetUrl, { headers: { "User-Agent": "mayhem-tracker" } });
+    const res = await fetch(assetUrl, { headers: { "User-Agent": "MayhemStatsTracker" } });
     if (!res.ok || !res.body) {
       return { success: false, error: `Download failed (HTTP ${res.status})` };
     }

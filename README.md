@@ -73,7 +73,7 @@ The maths lives in [`src/shared/score.ts`](src/shared/score.ts) and is held to t
 
 ## Download
 
-Grab `MayhemTracker-Setup.exe` (installer) or `MayhemTracker-Portable.exe` (no install, runs anywhere) from [mayhemstats.com/download](https://mayhemstats.com/download/) or the [latest release](https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest). The app checks for updates automatically.
+Grab `MayhemTracker-Setup.exe` (installer) or `MayhemTracker-Portable.exe` (no install, runs anywhere) from [mayhemstats.com/download](https://mayhemstats.com/download/) or the [latest release](https://github.com/MyNamesEMurray/MayhemStatsTracker/releases/latest). The app checks for updates automatically.
 
 ## Code signing policy
 

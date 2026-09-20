@@ -722,7 +722,7 @@ export default function App() {
                 Code signing policy
               </a>
               <a
-                href="https://github.com/MyNamesEMurray/mayhem-tracker"
+                href="https://github.com/MyNamesEMurray/MayhemStatsTracker"
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-lol-gold"
@@ -733,7 +733,7 @@ export default function App() {
             <p>
               Powered by anonymized games contributed by{" "}
               <a
-                href="https://github.com/MyNamesEMurray/mayhem-tracker"
+                href="https://github.com/MyNamesEMurray/MayhemStatsTracker"
                 className="text-lol-gold hover:underline"
                 target="_blank"
                 rel="noreferrer"

@@ -718,6 +718,9 @@ export default function App() {
               <a href="/download/" className="hover:text-lol-gold">
                 Download MayhemStats Tracker
               </a>
+              <a href="/download/#code-signing-policy" className="hover:text-lol-gold">
+                Code signing policy
+              </a>
               <a
                 href="https://github.com/MyNamesEMurray/mayhem-tracker"
                 target="_blank"

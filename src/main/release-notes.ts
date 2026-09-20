@@ -1,4 +1,5 @@
 import { compareVersions } from "../shared/version";
+import { withoutFooter } from "./release-footer";
 
 export interface ReleaseSummary {
   version: string;
@@ -34,7 +35,7 @@ export function buildReleaseNotes(
 
   const sections: string[] = [];
   for (const release of newer.slice(0, maxSections)) {
-    const body = release.body
+    const body = withoutFooter(release.body)
       .split("\n")
       .map((line) => applyMarker(line, currentVersion))
       .filter((line): line is string => line !== null)

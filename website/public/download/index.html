@@ -296,11 +296,46 @@
         that you can compare against your download.
       </p>
 
-      <h2>Code signing</h2>
+      <h2 id="code-signing-policy">Code signing policy</h2>
       <p>
         MayhemStats Tracker uses the <a href="https://signpath.org/">SignPath Foundation</a> for
         code signing of its Windows releases. Free code signing provided by
         <a href="https://about.signpath.io/">SignPath.io</a>, certificate by SignPath Foundation.
+      </p>
+      <p>
+        Every release is built by
+        <a
+          href="https://github.com/MyNamesEMurray/mayhem-tracker/blob/main/.github/workflows/release.yml"
+          >GitHub Actions</a
+        >
+        from the source in the
+        <a href="https://github.com/MyNamesEMurray/mayhem-tracker">public repository</a>, on
+        GitHub-hosted runners, and submitted for signing from that same workflow run. Nothing is
+        built or signed on anyone's machine.
+      </p>
+      <h3>Team roles</h3>
+      <ul>
+        <li>
+          <strong>Committers and reviewers:</strong>
+          <a href="https://github.com/MyNamesEMurray">MyNamesEMurray</a> - the only account with
+          write access to the repository. Pull requests from anyone else are reviewed before
+          merging.
+        </li>
+        <li>
+          <strong>Approvers:</strong>
+          <a href="https://github.com/MyNamesEMurray">MyNamesEMurray</a> - every signing request is
+          approved by hand in SignPath before a release is signed.
+        </li>
+      </ul>
+      <h3>Privacy</h3>
+      <p>
+        This program will not transfer any information to other networked systems unless
+        specifically requested by the user or the person installing or operating it. The app talks
+        to your own League client on your machine, checks GitHub for updates, and loads champion,
+        augment, and item data from Riot's public Data Dragon CDN. It uploads match records to the
+        community database only if you turn on <strong>Settings → Community Stats</strong>, which is
+        off by default. The <a href="/privacy/">privacy policy</a> covers exactly what an upload
+        contains and how to delete your contributions.
       </p>
       <div class="note" id="signing-status">
         <p>

@@ -35,7 +35,20 @@ Mayhem games - contributed by players, because there is no other source.
 
 Grab `MayhemTracker-Setup.exe` (installer) or `MayhemTracker-Portable.exe` (no install, runs anywhere) from [mayhemstats.com/download](https://mayhemstats.com/download/) or the [latest release](https://github.com/MyNamesEMurray/mayhem-tracker/releases/latest). The app checks for updates automatically.
 
+## Code signing policy
+
 MayhemStats Tracker uses the [SignPath Foundation](https://signpath.org/) for code signing of its Windows releases. Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by SignPath Foundation. _(Certificate pending - releases published before it is issued are unsigned, so Windows SmartScreen will warn on first run.)_
+
+Every release is built by [GitHub Actions](.github/workflows/release.yml) from the source in this repository, on GitHub-hosted runners, and submitted to SignPath from that same workflow run. Nothing is built or signed on anyone's machine.
+
+**Team roles**
+
+- Committers and reviewers: [MyNamesEMurray](https://github.com/MyNamesEMurray) - the only account with write access to this repository. Pull requests from anyone else are reviewed before merging.
+- Approvers: [MyNamesEMurray](https://github.com/MyNamesEMurray) - every signing request is approved by hand in SignPath before a release is signed.
+
+**Privacy policy**
+
+This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. In practice that means: the app talks to your own League client on localhost, checks GitHub for updates, and loads champion, augment, and item data from Riot's public Data Dragon CDN. It uploads match records to the community database only if you switch on **Settings → Community Stats**, which is off by default. The full [privacy policy](https://mayhemstats.com/privacy/) covers exactly what an upload contains and how to delete your contributions.
 
 ## Community stats & privacy
 

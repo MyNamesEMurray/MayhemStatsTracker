@@ -349,6 +349,66 @@ jobs:
 
       - run: npm run dist
 
+      # Code signing, through the SignPath Foundation. The executables are
+      # uploaded as a workflow artifact, SignPath verifies they came out of
+      # this very run on a GitHub-hosted runner, an approver okays the request
+      # by hand in SignPath, and the signed files come back to dist-signed/.
+      #
+      # Switched on by the SIGNPATH_ORGANIZATION_ID repository variable, so
+      # until the certificate is issued these steps are skipped and releases
+      # ship unsigned exactly as before. The three variables and the
+      # SIGNPATH_API_TOKEN secret are set once in the repository settings:
+      #
+      #   vars.SIGNPATH_ORGANIZATION_ID      the organization's id in SignPath
+      #   vars.SIGNPATH_PROJECT_SLUG         the project's slug in SignPath
+      #   vars.SIGNPATH_SIGNING_POLICY_SLUG  normally "release-signing"
+      #   secrets.SIGNPATH_API_TOKEN         an API token of a SignPath user
+      #                                      with the Submitter role
+      #
+      # The policy every release must follow lives at
+      # https://mayhemstats.com/download/#code-signing-policy
+      - name: Upload the unsigned executables for signing
+        id: unsigned
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: MayhemTracker-unsigned-${{ steps.version.outputs.tag }}
+          path: |
+            dist/MayhemTracker-Portable.exe
+            dist/MayhemTracker-Setup.exe
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Sign the executables
+        id: sign
+        if: vars.SIGNPATH_ORGANIZATION_ID != ''
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          # Long enough for a person to see the request and approve it
+          wait-for-completion-timeout-in-seconds: "7200"
+          output-artifact-directory: dist-signed
+
+      # The signed files take the unsigned ones' place, so the release step
+      # below does not need to know whether signing happened.
+      - name: Use the signed executables
+        if: steps.sign.outcome == 'success'
+        run: |
+          for f in MayhemTracker-Portable.exe MayhemTracker-Setup.exe; do
+            SIGNED=$(find dist-signed -name "$f" -type f | head -n 1)
+            if [ -z "$SIGNED" ]; then
+              echo "::error::SignPath returned no $f"
+              exit 1
+            fi
+            cp "$SIGNED" "dist/$f"
+          done
+          ls -l dist/*.exe
+
       # Notes come from this version's CHANGELOG.md section so they read like
       # notes for players. By now the step above has filled that section if it
       # was empty, so reaching the no-body branch means even the commits had
@@ -362,6 +422,15 @@ jobs:
           # thing that checked and the thing that publishes cannot disagree
           # about what counts as a section.
           if node .github/scripts/changelog-section.mts "$TAG" > notes.md; then
+            # SignPath asks that release pages point at the policy their
+            # signatures are made under. Only on a release that has notes: an
+            # empty body is what tells the update window to skip a release,
+            # and a footer alone must not undo that.
+            {
+              echo
+              echo "---"
+              echo "[Code signing policy](https://mayhemstats.com/download/#code-signing-policy) - free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by SignPath Foundation."
+            } >> notes.md
             echo "args=--notes-file notes.md" >> "$GITHUB_OUTPUT"
           else
             echo "::warning title=No release notes for $TAG::Publishing with an empty body, which the app's update window skips."

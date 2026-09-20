@@ -5,7 +5,7 @@
 // gray-400 and yellow-500, in both the filter chips and the rim drawn around
 // an augment icon. Both files opened with a comment calling the palette unified.
 //
-// These are the site's values, which .design-sync already treats as canonical.
+// These are the site's values, which are the canonical ones.
 // The two steps are deliberate rather than accidental: the rim drawn around an
 // icon sits one step stronger than the name beside it, so a 28px icon reads
 // clearly without the text next to it turning garish.

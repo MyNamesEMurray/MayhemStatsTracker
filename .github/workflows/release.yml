@@ -128,9 +128,8 @@ jobs:
           CHANGED=$(git diff --name-only "$BASE" "$GITHUB_SHA")
 
           # What the desktop app is built from. Everything else in the
-          # repository - website/, supabase/, .design-sync/, .design-canvas/,
-          # the workflows and their scripts, the README - ships without a new
-          # executable.
+          # repository - website/, supabase/, docs/, the workflows and their
+          # scripts, the README - ships without a new executable.
           APP='^(src/|assets/|scripts/|package\.json$|package-lock\.json$|electron\.vite\.config\.ts$|tsconfig[^/]*\.json$)'
           APP_CHANGED=$(printf '%s\n' "$CHANGED" | grep -E "$APP" || true)
 

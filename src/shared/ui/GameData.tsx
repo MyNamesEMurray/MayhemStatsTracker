@@ -10,9 +10,9 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 // root, from whatever it already had.
 //
 // This replaced the app's icons reaching for window.api in a mount effect,
-// which is also what made them impossible to render outside Electron - the
-// design-sync previews needed a hand-written window.api shim to draw a
-// scoreboard.
+// which is also what made them impossible to render anywhere but Electron:
+// anything drawing a scoreboard outside it had to hand-write a window.api
+// shim first.
 
 export interface AugmentInfo {
   name: string;

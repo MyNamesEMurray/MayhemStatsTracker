@@ -142,7 +142,7 @@ describe("assignTiers - rank percentiles within a cohort", () => {
 
   // The top cutoff is the 5th percentile, so the best entry only reaches S+
   // when 1/n <= 0.05. This is why a rarity holding three or four augments
-  // never shows an S+ - noted in .design-sync/NOTES.md against AugmentsTable.
+  // never shows an S+, which is the behaviour this pins down.
   test("a cohort smaller than twenty has no S+ at all", () => {
     for (const n of [3, 12, 19]) {
       const small = Array.from({ length: n }, (_, i) => ({ id: i, wins: 300 - i, games: 500 }));

@@ -1,0 +1,34 @@
+// What Cloudflare deploys the site with.
+//
+// mayhemstats.com is a Worker that serves nothing but these static files, and
+// Workers Builds runs `npx wrangler deploy` from this directory after the
+// build. Without this file that command has nothing to read, so the build
+// would succeed and the deploy would fail.
+//
+// `name` has to stay exactly the name of the existing Worker. Change it and
+// wrangler quietly creates a second Worker instead of updating this one,
+// leaving the custom domain pointed at the old one.
+{
+  "name": "mayhemstats",
+  "compatibility_date": "2026-09-20",
+  "assets": {
+    // Relative to this file, so website/dist - what `npm run build` writes.
+    "directory": "./dist",
+
+    // Every real route has a file: vite writes index.html, and prerender.mjs
+    // writes one per champion plus /community/. Anything else is a typo or a
+    // dead link, and serving the app shell for it is what the site has always
+    // done. Set to "none" and those would start returning a bare 404 instead.
+    //
+    // The cost is that a wrong URL answers 200, so it is worth keeping real
+    // routes on disk rather than leaning on this: /community/ was served this
+    // way once and Google read it as a duplicate of the homepage, because the
+    // shell carries the homepage's canonical. See prerender.mjs.
+    "not_found_handling": "single-page-application",
+
+    // The default, pinned because the redirect it produces is load bearing:
+    // /champion/brand 307s to /champion/brand/, which is the URL in the
+    // sitemap and in every canonical tag the prerender writes.
+    "html_handling": "auto-trailing-slash",
+  },
+}

@@ -42,13 +42,33 @@ Setting `AD_CLIENT` back to an empty string fully disables ads again.
 
 ## Deploy
 
-Any static host works. On Vercel: import the repository, set the project's
-**Root Directory** to `website`, and the defaults (Vite framework preset,
-`npm run build`, `dist` output) do the rest.
+mayhemstats.com is a Cloudflare Worker that serves these files and nothing
+else, built from this repository by Workers Builds. Its settings live in two
+places, and both have to agree:
+
+In the Cloudflare dashboard, under the Worker's **Settings -> Build**:
+
+| Field                                | Value                          |
+| ------------------------------------ | ------------------------------ |
+| Root directory                       | `website`                      |
+| Build command                        | `npm run build`                |
+| Deploy command                       | `npx wrangler deploy`          |
+| Non-production branch deploy command | `npx wrangler versions upload` |
+
+`website` matters twice over. The repository root is the desktop app, whose
+`npm run build` runs `electron-vite` and never produces a site; and wrangler
+looks for its configuration beside the directory it runs in, which is where
+`wrangler.jsonc` sits.
+
+In `wrangler.jsonc`: the Worker's name, the asset directory, and how paths
+with no file behind them are answered. The name has to stay exactly the name
+of the existing Worker, or a deploy creates a second one and leaves the custom
+domain on the first.
 
 The build reads a few modules from `../src/shared` - the scoring and tier
 maths, the augment descriptions, the design tokens - so that the site and the
 desktop app cannot disagree about them. It still builds _from_ this directory;
-it just needs the repository checked out whole, which is what Cloudflare Pages
-and GitHub Actions do by default. On Vercel, keep **Include source files
-outside of the Root Directory** enabled.
+it just needs the repository checked out whole, which is what Workers Builds
+and GitHub Actions do by default. Hosts that copy only the root directory into
+the build need that turned off: on Vercel, keep **Include source files outside
+of the Root Directory** enabled.

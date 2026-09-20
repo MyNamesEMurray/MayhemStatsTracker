@@ -23,13 +23,21 @@ Mayhem games - contributed by players, because there is no other source.
 
 **Overview** - your record at a glance: games, win rate, KDA, multikills, and your recent matches.
 
+![The Overview tab of MayhemStats Tracker](docs/images/app-overview.png)
+
 **Matches** - every game you've played, filterable by champion, patch and queue. Each row carries the full scoreboard: KDA, a per-game score, the items and augments you took, damage dealt, taken and healed, and any multikills.
+
+![The Matches tab, with per-game scores and filters](docs/images/app-matches.png)
 
 **Champions** - the tier list, from S+ to D, ranked by Score with win rate, games, pick rate, KDA, damage and gold. A switch at the top flips the whole board between **your** games and the **community's**.
 
 **Champion pages** - tier and Score, a **You vs the community** line putting your record on that champion next to everyone else's, **matchups** (who it beats, who beats it), the **core build**, the **best augments** split by rarity, the **typical build path** in purchase order, and full sortable item and augment tables.
 
+![A champion page in the app, with You vs the community and matchups](docs/images/app-champion.png)
+
 **Augments** - the augment tier list, filterable by rarity. Expand any row to see the champions it performs best on and which augments it pairs well with.
+
+![The augment tier list in the app](docs/images/app-augments.png)
 
 **In game** - while a game is running, a tab appears with the augment board for the champion you're playing, split by rarity, with the augments you've already taken struck off. Under it sits the core build for that champion, reading your actual inventory so bought items move out of the recommendation and what's left is what you can still buy.
 

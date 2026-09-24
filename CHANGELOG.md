@@ -27,6 +27,12 @@ v2.10.0 will. GitHub hides the comment when rendering, and only fixes for
 bugs of our own making need it - a fix for a long-standing bug or something
 on Riot's end is news to everyone, so leave those unmarked.
 
+## v2.14.14 - 2026-09-24
+
+<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
+
+- Filter augment_stats and item_stats reads by patch and cache them per patch
+
 ## v2.14.13 - 2026-09-20
 
 - <!--fixes:v2.14.12--> **Updating from inside the app works again.** The repository was renamed, and the app checked the download link against the old name before installing anything. Every update was refused with "Unexpected download URL". The check now asks who published the file rather than what the repository is called, so a rename cannot break it again. If you were stuck, you can update from here as normal.

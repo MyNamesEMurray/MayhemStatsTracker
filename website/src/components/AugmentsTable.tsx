@@ -184,15 +184,25 @@ function AugmentExpansion({
   // Holding all of it for every augment is 341k rows; one augment is ~2k.
   const [rows, setRows] = useState<AugmentStatRow[] | null>(null);
   const [pairs, setPairs] = useState<AugmentPairRow[]>([]);
+  const patchKey = filters.patches ? [...filters.patches].sort().join(",") : null;
   useEffect(() => {
     let active = true;
-    fetchAugmentChampions(augmentId)
+    fetchAugmentChampions(
+      augmentId,
+      patchKey == null ? undefined : patchKey.split(",").filter(Boolean),
+    )
       .then((r) => {
         if (active) setRows(r);
       })
       .catch(() => {
         if (active) setRows([]);
       });
+    return () => {
+      active = false;
+    };
+  }, [augmentId, patchKey]);
+  useEffect(() => {
+    let active = true;
     fetchAugmentPairs(augmentId).then((r) => {
       if (active) setPairs(r);
     });

@@ -47,8 +47,12 @@ async function fetchPage<T>(
 // page's rows in another and drop the difference. Each caller's query must
 // name an order over a unique key of the view, which the rollups are indexed
 // on.
-export async function fetchAllRows<T>(view: string, query = "select=*"): Promise<T[]> {
-  const first = await fetchPage<T>(view, query, 0, true);
+export async function fetchAllRows<T>(
+  view: string,
+  query = "select=*",
+  { count = true }: { count?: boolean } = {},
+): Promise<T[]> {
+  const first = await fetchPage<T>(view, query, 0, count);
   if (first.rows.length < PAGE) return first.rows;
 
   if (first.total == null) {

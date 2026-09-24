@@ -65,6 +65,7 @@ interface LoadedData {
 // The rows behind one champion page
 interface ChampionRows {
   championId: number;
+  patchKey: string;
   augmentRows: AugmentStatRow[];
   itemRows: ItemStatRow[];
   purchaseRows: ItemPurchaseRow[];
@@ -224,24 +225,35 @@ export default function App() {
   // doesn't refetch.
   const [championRows, setChampionRows] = useState<ChampionRows | null>(null);
   const [championRowsError, setChampionRowsError] = useState<string | null>(null);
+  const championPatches = useMemo(() => {
+    if (patchList.length === 0) return undefined;
+    const all = [...patchList].sort((a, b) => comparePatches(b, a));
+    const wanted = patchesIn(parsePatchParam(patchParam, all), all) ?? all;
+    return [...new Set([...all.slice(0, AUTO_WIDEN_MAX_PATCHES), ...wanted])];
+  }, [patchList, patchParam]);
+  const championPatchKey = championPatches?.join(",") ?? "*";
   useEffect(() => {
     if (selectedChampion == null) return;
-    if (championRows?.championId === selectedChampion) return;
+    const current = championRows?.championId === selectedChampion ? championRows : null;
+    if (current?.patchKey === championPatchKey) return;
     let active = true;
     setChampionRowsError(null);
     Promise.all([
-      fetchChampionAugments(selectedChampion),
-      fetchChampionItems(selectedChampion),
-      fetchChampionPurchases(selectedChampion),
+      fetchChampionAugments(selectedChampion, championPatches),
+      fetchChampionItems(selectedChampion, championPatches),
+      current ? current.purchaseRows : fetchChampionPurchases(selectedChampion),
       // Matchups are the one of the four that can fail without taking the
       // page with it: the rollup is newer than the others, so a deploy where
       // the view is not there yet loses a panel rather than a champion page.
-      fetchChampionMatchups(selectedChampion).catch(() => [] as MatchupStatRow[]),
+      current
+        ? current.matchupRows
+        : fetchChampionMatchups(selectedChampion).catch(() => [] as MatchupStatRow[]),
     ])
       .then(([augmentRows, itemRows, purchaseRows, matchupRows]) => {
         if (active)
           setChampionRows({
             championId: selectedChampion,
+            patchKey: championPatchKey,
             augmentRows,
             itemRows,
             purchaseRows,
@@ -254,7 +266,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [selectedChampion, championRows]);
+  }, [selectedChampion, championRows, championPatches, championPatchKey]);
 
   // From community_patch_spans (21 rows) rather than from the stat rows,
   // because the stat rows are no longer every patch: deriving the picker's

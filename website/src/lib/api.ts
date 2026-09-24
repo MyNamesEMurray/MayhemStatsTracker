@@ -2,6 +2,34 @@
 // the paging loop live in src/shared/supabase.ts, which the desktop app reads
 // through too.
 import { fetchAllRows, patchFilter } from "../../../src/shared/supabase.ts";
+import { createPatchRowCache, type RowStore } from "../../../src/shared/rowCache.ts";
+
+const STORE_PREFIX = "community-rows:";
+
+const localStore: RowStore = {
+  get(key) {
+    try {
+      const raw = localStorage.getItem(STORE_PREFIX + key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+  set(key, entry) {
+    const value = JSON.stringify(entry);
+    try {
+      localStorage.setItem(STORE_PREFIX + key, value);
+    } catch {
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k?.startsWith(STORE_PREFIX)) localStorage.removeItem(k);
+        }
+        localStorage.setItem(STORE_PREFIX + key, value);
+      } catch {}
+    }
+  },
+};
 
 export interface ChampionStatRow {
   patch: string;
@@ -98,17 +126,32 @@ export async function fetchAugmentTotals(patches?: string[]): Promise<AugmentTot
 // Everything below is per-champion or per-augment, fetched when a page that
 // needs it opens. Filtering server-side keeps a champion page to a couple of
 // thousand rows instead of the half-million the full grain would cost.
-export function fetchChampionAugments(championId: number): Promise<AugmentStatRow[]> {
-  return fetchAllRows<AugmentStatRow>(
-    "augment_stats",
-    `select=*&champion_id=eq.${championId}&order=patch,queue_id,augment_id`,
+const augmentStats = createPatchRowCache<AugmentStatRow>({
+  view: "augment_stats",
+  store: localStore,
+});
+const itemStats = createPatchRowCache<ItemStatRow>({ view: "item_stats", store: localStore });
+
+export function fetchChampionAugments(
+  championId: number,
+  patches?: string[],
+): Promise<AugmentStatRow[]> {
+  return augmentStats.load(`champion:${championId}`, patches, (p) =>
+    fetchAllRows<AugmentStatRow>(
+      "augment_stats",
+      `select=*&champion_id=eq.${championId}&order=patch,queue_id,augment_id${patchFilter(p)}`,
+      { count: false },
+    ),
   );
 }
 
-export function fetchChampionItems(championId: number): Promise<ItemStatRow[]> {
-  return fetchAllRows<ItemStatRow>(
-    "item_stats",
-    `select=*&champion_id=eq.${championId}&order=patch,queue_id,item_id`,
+export function fetchChampionItems(championId: number, patches?: string[]): Promise<ItemStatRow[]> {
+  return itemStats.load(`champion:${championId}`, patches, (p) =>
+    fetchAllRows<ItemStatRow>(
+      "item_stats",
+      `select=*&champion_id=eq.${championId}&order=patch,queue_id,item_id${patchFilter(p)}`,
+      { count: false },
+    ),
   );
 }
 
@@ -171,10 +214,16 @@ export function fetchChampionMatchups(
 }
 
 // For an expanded augment row: which champions carry it
-export function fetchAugmentChampions(augmentId: number): Promise<AugmentStatRow[]> {
-  return fetchAllRows<AugmentStatRow>(
-    "augment_stats",
-    `select=*&augment_id=eq.${augmentId}&order=patch,queue_id,champion_id`,
+export function fetchAugmentChampions(
+  augmentId: number,
+  patches?: string[],
+): Promise<AugmentStatRow[]> {
+  return augmentStats.load(`augment:${augmentId}`, patches, (p) =>
+    fetchAllRows<AugmentStatRow>(
+      "augment_stats",
+      `select=*&augment_id=eq.${augmentId}&order=patch,queue_id,champion_id${patchFilter(p)}`,
+      { count: false },
+    ),
   );
 }
 

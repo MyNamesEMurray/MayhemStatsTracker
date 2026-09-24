@@ -16,6 +16,7 @@ import { getDataDir } from "./paths";
 import { MAYHEM_QUEUE_IDS } from "../shared/queues";
 import { fetchAllRows, patchFilter } from "../shared/supabase";
 import { comparePatches } from "../shared/patch";
+import { createPatchRowCache } from "../shared/rowCache";
 
 export interface CommunityChampionRow {
   patch: string;
@@ -109,18 +110,20 @@ interface Cache {
 let memory: Cache | null = null;
 let inFlight: Promise<Cache> | null = null;
 
-interface ChampionDetailCache {
-  fetchedAt: number;
-  augments: CommunityAugmentRow[];
-  items: CommunityItemRow[];
-  matchups: CommunityMatchupRow[];
-}
-
 // Champion pages get revisited constantly while comparing builds; holding the
 // last handful in memory makes going back and forth free. Not persisted -
 // it's a session convenience, not the app's data.
-const detailCache = new Map<number, ChampionDetailCache>();
+const matchupCache = new Map<number, { fetchedAt: number; rows: CommunityMatchupRow[] }>();
 const DETAIL_LIMIT = 24;
+
+const augmentStats = createPatchRowCache<CommunityAugmentRow>({ view: "augment_stats" });
+const itemStats = createPatchRowCache<CommunityItemRow>({ view: "item_stats" });
+
+function clearDetailCaches(): void {
+  matchupCache.clear();
+  augmentStats.clear();
+  itemStats.clear();
+}
 
 const cacheFile = () => path.join(getDataDir(), "community-cache.json.gz");
 
@@ -220,8 +223,7 @@ async function completeInBackground(): Promise<void> {
       fetchAllRows<CommunityAugmentTotalRow>("augment_totals", AUGMENT_TOTALS_QUERY),
     ]);
     writeCache({ version: CACHE_VERSION, fetchedAt: Date.now(), champions, augmentTotals });
-    detailCache.clear();
-    augmentChampionCache.clear();
+    clearDetailCaches();
   } catch {
     // Partial cache stands; it is already marked stale
   }
@@ -273,8 +275,7 @@ function refresh(cached: Cache | null = readCache()): Promise<Cache> {
         champions,
         augmentTotals,
       };
-      detailCache.clear();
-      augmentChampionCache.clear();
+      clearDetailCaches();
       writeCache(cache);
       return cache;
     } catch (err) {
@@ -380,32 +381,53 @@ export async function getCommunityChampionStats(
 // One champion's augment and item rows, fetched from the server filtered to
 // that champion. Both views are indexed on champion_id, so this is a couple of
 // thousand rows rather than the half-million the full grain would cost.
-async function loadChampionDetail(championId: number): Promise<ChampionDetailCache> {
-  const hit = detailCache.get(championId);
-  if (hit && Date.now() - hit.fetchedAt < TTL_MS) return hit;
-
+async function loadChampionDetail(
+  championId: number,
+  patches?: string[],
+): Promise<{
+  augments: CommunityAugmentRow[];
+  items: CommunityItemRow[];
+  matchups: CommunityMatchupRow[];
+}> {
+  const scope = `champion:${championId}`;
   const [augments, items, matchups] = await Promise.all([
-    fetchAllRows<CommunityAugmentRow>(
-      "augment_stats",
-      `${AUGMENT_QUERY}&champion_id=eq.${championId}`,
+    augmentStats.load(scope, patches, (p) =>
+      fetchAllRows<CommunityAugmentRow>(
+        "augment_stats",
+        `${AUGMENT_QUERY}&champion_id=eq.${championId}${patchFilter(p)}`,
+        { count: false },
+      ),
     ),
-    fetchAllRows<CommunityItemRow>("item_stats", `${ITEM_QUERY}&champion_id=eq.${championId}`),
-    // The newest of the three rollups, so a client running against a project
-    // that has not had the migration yet loses a panel rather than the page
-    fetchAllRows<CommunityMatchupRow>(
-      "champion_matchups",
-      `${MATCHUP_QUERY}&champion_id=eq.${championId}`,
-    ).catch(() => [] as CommunityMatchupRow[]),
+    itemStats.load(scope, patches, (p) =>
+      fetchAllRows<CommunityItemRow>(
+        "item_stats",
+        `${ITEM_QUERY}&champion_id=eq.${championId}${patchFilter(p)}`,
+        { count: false },
+      ),
+    ),
+    loadChampionMatchups(championId),
   ]);
+  return { augments, items, matchups };
+}
 
-  const entry: ChampionDetailCache = { fetchedAt: Date.now(), augments, items, matchups };
-  detailCache.set(championId, entry);
+async function loadChampionMatchups(championId: number): Promise<CommunityMatchupRow[]> {
+  const hit = matchupCache.get(championId);
+  if (hit && Date.now() - hit.fetchedAt < TTL_MS) return hit.rows;
+
+  // The newest of the three rollups, so a client running against a project
+  // that has not had the migration yet loses a panel rather than the page
+  const rows = await fetchAllRows<CommunityMatchupRow>(
+    "champion_matchups",
+    `${MATCHUP_QUERY}&champion_id=eq.${championId}`,
+  ).catch(() => [] as CommunityMatchupRow[]);
+
+  matchupCache.set(championId, { fetchedAt: Date.now(), rows });
   // Oldest insertion first, so deleting the first key evicts the least
   // recently fetched champion
-  if (detailCache.size > DETAIL_LIMIT) {
-    detailCache.delete(detailCache.keys().next().value as number);
+  if (matchupCache.size > DETAIL_LIMIT) {
+    matchupCache.delete(matchupCache.keys().next().value as number);
   }
-  return entry;
+  return rows;
 }
 
 // Every pairing one augment appears in, fetched when a row is expanded. The
@@ -458,7 +480,7 @@ export async function getCommunityChampionDetail(
   matchups: { opponent_id: number; games: number; wins: number }[];
 }> {
   const included = patchSet(patches);
-  const { augments, items, matchups } = await loadChampionDetail(championId);
+  const { augments, items, matchups } = await loadChampionDetail(championId, patches);
   const augTotals = new Map<number, { augment_id: number; picks: number; wins: number }>();
   for (const r of augments) {
     if (r.champion_id !== championId || !matches(r, included, queue)) continue;
@@ -536,28 +558,21 @@ export async function getCommunityAugmentStats(
 // Which champions carry one augment, for an expanded row. Filtered server-side
 // on an indexed column, so this is a couple of thousand rows rather than the
 // whole 341k grain.
-const augmentChampionCache = new Map<number, { fetchedAt: number; rows: CommunityAugmentRow[] }>();
-
 export async function getCommunityAugmentChampions(
   augmentId: number,
   patches?: string[],
   queue?: number,
 ): Promise<{ champion_id: number; picks: number; wins: number }[]> {
   const included = patchSet(patches);
-  let hit = augmentChampionCache.get(augmentId);
-  if (!hit || Date.now() - hit.fetchedAt >= TTL_MS) {
-    const rows = await fetchAllRows<CommunityAugmentRow>(
+  const rows = await augmentStats.load(`augment:${augmentId}`, patches, (p) =>
+    fetchAllRows<CommunityAugmentRow>(
       "augment_stats",
-      `${AUGMENT_QUERY}&augment_id=eq.${augmentId}`,
-    );
-    hit = { fetchedAt: Date.now(), rows };
-    augmentChampionCache.set(augmentId, hit);
-    if (augmentChampionCache.size > DETAIL_LIMIT) {
-      augmentChampionCache.delete(augmentChampionCache.keys().next().value as number);
-    }
-  }
+      `${AUGMENT_QUERY}&augment_id=eq.${augmentId}${patchFilter(p)}`,
+      { count: false },
+    ),
+  );
   const byChampion = new Map<number, { champion_id: number; picks: number; wins: number }>();
-  for (const r of hit.rows) {
+  for (const r of rows) {
     if (!matches(r, included, queue)) continue;
     const e = byChampion.get(r.champion_id) ?? { champion_id: r.champion_id, picks: 0, wins: 0 };
     e.picks += r.picks;

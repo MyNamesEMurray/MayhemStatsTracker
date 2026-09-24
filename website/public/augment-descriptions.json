@@ -1,5 +1,5 @@
 {
-  "patch": "16.18",
+  "patch": "16.19",
   "descriptions": {
     "1": "Using Abilities grant you stacking Ability Haste.\nThis resets each round.",
     "2": "Gain ? Item Haste (equivalent to ?% Item CDR).\nItem Haste reduces the cooldown of all Item Abilities.",
@@ -264,6 +264,8 @@
     "392": "Dealing damage to an enemy champion reduces their shields.",
     "393": "Immediately: Gain a Bami's Cinder.\nQUEST: Possess Sunfire Aegis and Hollow Radiance.\nREWARD: These Items combine into Void Immolation.",
     "394": "When Dust To Diamonds is removed or replaced gain a ? Prismatic Stat Anvils.",
+    "396": "Replace Flee with Death Dealer.\nActivate: You and target champion enter the Dealth Realm for ? seconds.\nEntering the Death Realm causes you to become invisible for up to ? seconds.",
+    "397": "Every ? seconds spawn a nearby hot dog, this can be picked up by anyone, causing them to breath fire for ? seconds, dealing ? magic damage per second.\nIf you die while breathing fire, you explode dealing ? magic damage per stack.\nIf any enemy champion picks up a hot dog their fire deals ?% damage and damages their allies.",
     "404": "How did you find this?!?!?\nGain ? hats.",
     "405": "Gain ?% damage per hat you're wearing.",
     "1001": "Gain stacks when taking or dealing damage. For every ? stacks, gain Adaptive Force, Armor, Magic Resist, Size, and Tenacity.",
@@ -528,7 +530,7 @@
     "2143": "Reduce Sundered Sky's per target cooldown to ? seconds and heal you for ? of missing health.\nGain ? Gold.",
     "2144": "Shields granted from ? are stronger and scaling with target's missing Health.",
     "2148": "Master Yi occassionaly strikes twice.",
-    "2157": "Gain ?.\n? of damage taken is dealt to you over 3 seconds.\nHeal for ? instantly when scoring a takedown.",
+    "2157": "Gain ?.\nDeath's Dance's Ignore Pain is increased to ? of damage received, and heals for ? instantly when scoring a takedown.",
     "7001": "Zz'Rot Portal spawns ? additional minion, plus an additional minion for every ? levels you have.\nMinions are also spawned when the portal is destroyed.",
     "7002": "You may purchase unlimited amounts of The Black Cleaver. On purchase, increase the new Black Cleaver's stats based on how many you already have.\nInstantly gain The Brutalizer.",
     "7003": "Double the max stacks of Mejai's Soulstealer, Leviathan, and Sword of the Occult.\n'No no Jarvan I said do OR die'",

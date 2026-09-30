@@ -77,14 +77,13 @@ Grab `MayhemTracker-Setup.exe` (installer) or `MayhemTracker-Portable.exe` (no i
 
 ## Code signing policy
 
-MayhemStats Tracker uses the [SignPath Foundation](https://signpath.org/) for code signing of its Windows releases. Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by SignPath Foundation. _(Certificate pending - releases published before it is issued are unsigned, so Windows SmartScreen will warn on first run.)_
+MayhemStats Tracker's Windows releases are not code signed. The project applied to the [SignPath Foundation](https://signpath.org/)'s free code signing program for open source projects and was not approved, so Windows SmartScreen will warn on first run. Each release lists a SHA-256 digest for every file so you can verify your download.
 
-Every release is built by [GitHub Actions](.github/workflows/release.yml) from the source in this repository, on GitHub-hosted runners, and submitted to SignPath from that same workflow run. Nothing is built or signed on anyone's machine.
+Every release is built by [GitHub Actions](.github/workflows/release.yml) from the source in this repository, on GitHub-hosted runners. Nothing is built on anyone's machine.
 
 **Team roles**
 
 - Committers and reviewers: [MyNamesEMurray](https://github.com/MyNamesEMurray) - the only account with write access to this repository. Pull requests from anyone else are reviewed before merging.
-- Approvers: [MyNamesEMurray](https://github.com/MyNamesEMurray) - every signing request is approved by hand in SignPath before a release is signed.
 
 **Privacy policy**
 

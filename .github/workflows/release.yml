@@ -419,15 +419,6 @@ jobs:
           # thing that checked and the thing that publishes cannot disagree
           # about what counts as a section.
           if node .github/scripts/changelog-section.mts "$TAG" > notes.md; then
-            # SignPath asks that release pages point at the policy their
-            # signatures are made under. Only on a release that has notes: an
-            # empty body is what tells the update window to skip a release,
-            # and a footer alone must not undo that.
-            {
-              echo
-              echo "---"
-              echo "[Code signing policy](https://mayhemstats.com/download/#code-signing-policy) - free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by SignPath Foundation."
-            } >> notes.md
             echo "args=--notes-file notes.md" >> "$GITHUB_OUTPUT"
           else
             echo "::warning title=No release notes for $TAG::Publishing with an empty body, which the app's update window skips."

@@ -302,9 +302,10 @@
 
       <h2 id="code-signing-policy">Code signing policy</h2>
       <p>
-        MayhemStats Tracker uses the <a href="https://signpath.org/">SignPath Foundation</a> for
-        code signing of its Windows releases. Free code signing provided by
-        <a href="https://about.signpath.io/">SignPath.io</a>, certificate by SignPath Foundation.
+        MayhemStats Tracker's Windows releases are not code signed. The project applied to the
+        <a href="https://signpath.org/">SignPath Foundation</a>'s free code signing program for open
+        source projects and was not approved, so there is no certificate to sign with. That is why
+        SmartScreen warns on first run, and it will keep doing so until the releases are signed.
       </p>
       <p>
         Every release is built by
@@ -314,8 +315,8 @@
         >
         from the source in the
         <a href="https://github.com/MyNamesEMurray/MayhemStatsTracker">public repository</a>, on
-        GitHub-hosted runners, and submitted for signing from that same workflow run. Nothing is
-        built or signed on anyone's machine.
+        GitHub-hosted runners. Nothing is built on anyone's machine, so what you download is exactly
+        what the public source produces.
       </p>
       <h3>Team roles</h3>
       <ul>
@@ -324,11 +325,6 @@
           <a href="https://github.com/MyNamesEMurray">MyNamesEMurray</a> - the only account with
           write access to the repository. Pull requests from anyone else are reviewed before
           merging.
-        </li>
-        <li>
-          <strong>Approvers:</strong>
-          <a href="https://github.com/MyNamesEMurray">MyNamesEMurray</a> - every signing request is
-          approved by hand in SignPath before a release is signed.
         </li>
       </ul>
       <h3>Privacy</h3>
@@ -343,9 +339,10 @@
       </p>
       <div class="note" id="signing-status">
         <p>
-          <strong>Status: certificate pending.</strong> Releases published before the certificate is
-          issued are unsigned, which is why SmartScreen warns on them. Once signing is live, this
-          notice goes away and Windows will show the verified publisher instead.
+          <strong>Status: unsigned.</strong> The SignPath Foundation application was not approved,
+          so releases are published unsigned and SmartScreen will warn on them. The SHA-256 digests
+          on the releases page are the way to check that a download is the file GitHub Actions
+          built.
         </p>
       </div>
 

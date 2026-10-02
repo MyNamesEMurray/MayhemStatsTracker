@@ -77,7 +77,7 @@ Grab `MayhemTracker-Setup.exe` (installer) or `MayhemTracker-Portable.exe` (no i
 
 ## Code signing policy
 
-MayhemStats Tracker's Windows releases are not code signed. The project applied to the [SignPath Foundation](https://signpath.org/)'s free code signing program for open source projects and was not approved, so Windows SmartScreen will warn on first run. Each release lists a SHA-256 digest for every file so you can verify your download.
+MayhemStats Tracker's Windows releases are not code signed, so Windows SmartScreen will warn on first run. Each release lists a SHA-256 digest for every file so you can verify your download.
 
 Every release is built by [GitHub Actions](.github/workflows/release.yml) from the source in this repository, on GitHub-hosted runners. Nothing is built on anyone's machine.
 

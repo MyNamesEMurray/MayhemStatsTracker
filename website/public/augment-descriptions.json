@@ -1,5 +1,5 @@
 {
-  "patch": "16.19",
+  "patch": "16.20",
   "descriptions": {
     "1": "Using Abilities grant you stacking Ability Haste.\nThis resets each round.",
     "2": "Gain ? Item Haste (equivalent to ?% Item CDR).\nItem Haste reduces the cooldown of all Item Abilities.",
@@ -466,7 +466,7 @@
     "2008": "Striking enemies with Abilities grants you stacks of Popoff, reducing your non-Ultimate Ability Cooldowns.",
     "2009": "Gain ? Critical Strike Chance and ? Attack Speed.",
     "2010": "Your Critical Strikes apply On-Hit effects an additional time.\nGain ? Crit chance.",
-    "2016": "On-Hit consume ? Mana to deal ? magic damage, this damage can Critically Strike.",
+    "2016": "On-Hit deal ? magic damage, this damage can Critically Strike.",
     "2018": "Gain percent cooldown reduction and convert all of your Attack Speed into Ability Haste.",
     "2024": "Gain Ability Haste equal to ?% of your Critical Strike Chance.",
     "2026": "Gain increased Movement Speed towards enemies at low Health.",

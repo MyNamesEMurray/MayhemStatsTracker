@@ -16,7 +16,7 @@ import {
   type MatchupStatRow,
 } from "./lib/api";
 import { GameDataProvider, NO_AUGMENTS } from "../../src/shared/ui/GameData.tsx";
-import { DownloadIcon, InfoIcon, SwordsIcon } from "../../src/shared/ui/icons.tsx";
+import { DownloadIcon, SwordsIcon } from "../../src/shared/ui/icons.tsx";
 import { Button, PANEL, buttonClass } from "../../src/shared/ui/primitives.tsx";
 import {
   loadAugmentData,
@@ -39,8 +39,16 @@ import {
   type Filters,
 } from "./lib/stats";
 import AdSlot from "./components/AdSlot";
-import { pageScope, showsWidenHint, widenAction } from "./lib/autoWiden";
-import { parsePins } from "./lib/compare";
+import {
+  autoWidenTarget,
+  AUTO_WIDEN_MIN_GAMES,
+  AUTO_WIDEN_MAX_PATCHES,
+  pageScope,
+  showsWidenHint,
+  widenAction,
+} from "../../src/shared/autoWiden.ts";
+import { AutoWidenNotice, WidenHint } from "../../src/shared/ui/AutoWidenNotice.tsx";
+import { parsePins } from "../../src/shared/compare.ts";
 import CommunityPage from "./components/CommunityPage";
 import ComparePage from "./components/ComparePage";
 import AugmentsTable from "./components/AugmentsTable";
@@ -79,12 +87,10 @@ interface ChampionRows {
 // lands on is its emptiest. When the newest patch can't support the view,
 // reach back a patch at a time until it can, then say so and leave the
 // widened range in the filter for the reader to override.
-const AUTO_WIDEN_MIN_GAMES = 50;
 // Champion pages get the site's own confidence floor: below this a win rate
 // renders muted everywhere else, so it shouldn't headline a build page
 const AUTO_WIDEN_MIN_CHAMPION_GAMES = MIN_SAMPLE;
 // Never reach back further than this - old patches are a different mode
-const AUTO_WIDEN_MAX_PATCHES = 3;
 
 export default function App() {
   const [data, setData] = useState<LoadedData | null>(null);
@@ -422,28 +428,18 @@ export default function App() {
   );
 
   // How far back the newest patch has to reach to be worth reading
-  const autoWidenTo = useMemo(() => {
-    if (!data || patches.length < 2) return null;
-    const target = selectedChampion != null ? AUTO_WIDEN_MIN_CHAMPION_GAMES : AUTO_WIDEN_MIN_GAMES;
-    const included = new Set<string>();
-    let count = 0;
-    for (const patch of patches.slice(0, AUTO_WIDEN_MAX_PATCHES)) {
-      included.add(patch);
-      count = gamesOn(included, selectedChampion);
-      if (count >= target) break;
-    }
-    if (included.size < 2) return null;
-    const oldest = patches[included.size - 1];
-    return {
-      from: oldest,
-      to: patches[0],
-      onLatest: gamesOn(new Set([patches[0]]), selectedChampion),
-      widened: count,
-      // False when even the full reach-back fell short - the banner says so
-      // rather than claiming the numbers are now solid
-      reached: count >= target,
-    };
-  }, [data, patches, selectedChampion, gamesOn]);
+  const autoWidenTo = useMemo(
+    () =>
+      data
+        ? autoWidenTarget(
+            patches,
+            (included) => gamesOn(included, selectedChampion),
+            selectedChampion != null ? AUTO_WIDEN_MIN_CHAMPION_GAMES : AUTO_WIDEN_MIN_GAMES,
+            AUTO_WIDEN_MAX_PATCHES,
+          )
+        : null,
+    [data, patches, selectedChampion, gamesOn],
+  );
 
   // A champion page's patch selection is scoped to that page: whatever the
   // board was showing is restored on the way back out. Widening for one thin
@@ -644,51 +640,18 @@ export default function App() {
           )}
 
           {autoWiden && !onCommunityPage && tab !== "compare" && (
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-lol-gold/25 bg-lol-gold/[0.06] px-4 py-3">
-              <InfoIcon
-                width={15}
-                height={15}
-                className="mt-[3px] shrink-0 text-lol-gold"
-                aria-hidden="true"
-              />
-              <p className="text-[13px] leading-relaxed text-lol-text">
-                <span className="text-lol-text-bright">
-                  Showing {formatPatch(autoWiden.from)}–{formatPatch(autoWiden.to)}.
-                </span>{" "}
-                {formatPatch(autoWiden.to)} alone has{" "}
-                {autoWiden.onLatest === 0
-                  ? "no games"
-                  : `${autoWiden.onLatest} game${autoWiden.onLatest === 1 ? "" : "s"}`}{" "}
-                {selectedChampion != null ? "on this champion" : "so far"}.
-                {!autoWiden.reached &&
-                  ` Still thin at ${autoWiden.widened.toLocaleString()} - read as directional.`}
-              </p>
-            </div>
+            <AutoWidenNotice
+              widen={autoWiden}
+              scope={selectedChampion != null ? "on this champion" : "so far"}
+            />
           )}
 
           {showWidenHint && autoWidenTo && !onCommunityPage && tab !== "compare" && (
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-lol-gold/25 bg-lol-gold/[0.06] px-4 py-3">
-              <InfoIcon
-                width={15}
-                height={15}
-                className="mt-[3px] shrink-0 text-lol-gold"
-                aria-hidden="true"
-              />
-              <p className="text-[13px] leading-relaxed text-lol-text">
-                {formatPatch(autoWidenTo.to)} has{" "}
-                {autoWidenTo.onLatest === 0
-                  ? "no games"
-                  : `only ${autoWidenTo.onLatest} game${autoWidenTo.onLatest === 1 ? "" : "s"}`}{" "}
-                {selectedChampion != null ? "on this champion" : "so far"}, so these numbers are
-                thin.{" "}
-                <button
-                  onClick={applyWiden}
-                  className="text-lol-gold hover:text-lol-gold-light underline underline-offset-2 cursor-pointer"
-                >
-                  Include {formatPatch(autoWidenTo.from)}–{formatPatch(autoWidenTo.to)}
-                </button>
-              </p>
-            </div>
+            <WidenHint
+              widen={autoWidenTo}
+              scope={selectedChampion != null ? "on this champion" : "so far"}
+              onApply={applyWiden}
+            />
           )}
 
           {onCommunityPage && <CommunityPage />}

@@ -404,7 +404,13 @@ export default function ChampionDetail() {
       >
         ← All champions
       </button>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => navigate(`/compare?pin=${championId}`)}
+          className="text-sm text-lol-gold hover:text-lol-gold-light whitespace-nowrap cursor-pointer mr-1"
+        >
+          Compare across patches →
+        </button>
         <QueueSelect value={queue} onChange={setQueue} />
         <PatchRangeSelect
           patches={patchOptions}

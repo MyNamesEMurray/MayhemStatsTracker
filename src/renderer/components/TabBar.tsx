@@ -7,6 +7,8 @@ const tabs: { to: string; label: string }[] = [
   { to: "/matches", label: "Matches" },
   { to: "/champions", label: "Champions" },
   { to: "/augments", label: "Augments" },
+  { to: "/compare", label: "Compare" },
+  { to: "/community", label: "Community" },
   { to: "/friends", label: "Friends" },
   { to: "/settings", label: "Settings" },
 ];
@@ -79,9 +81,12 @@ export default function TabBar({
             v{update.latest} available
           </button>
         )}
-        <span className="flex items-center gap-1.5 text-xs text-lol-text">
+        <span
+          className="flex items-center gap-1.5 text-xs text-lol-text"
+          title={statusLabels[status]}
+        >
           <span className={`w-[7px] h-[7px] rounded-full ${statusColors[status]}`} />
-          {statusLabels[status]}
+          <span className="max-[900px]:hidden">{statusLabels[status]}</span>
         </span>
       </div>
     </div>

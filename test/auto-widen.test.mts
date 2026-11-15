@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  autoWidenTarget,
   pageScope,
   showsWidenHint,
   widenAction,
   type WidenInputs,
-} from "../website/src/lib/autoWiden.ts";
+} from "../src/shared/autoWiden.ts";
 
 const widenTo = { from: "26.20", to: "26.22" };
 const base: WidenInputs = {
@@ -66,5 +67,29 @@ describe("pageScope", () => {
   it("resets when moving to another champion or back to the board", () => {
     assert.deepEqual(pageScope({ ...page, selectedChampion: 12 }), { type: "reset" });
     assert.deepEqual(pageScope({ ...page, onChampionPage: false }), { type: "reset" });
+  });
+});
+
+describe("autoWidenTarget", () => {
+  const games = (per: Record<string, number>) => (s: Set<string>) =>
+    [...s].reduce((n, p) => n + (per[p] ?? 0), 0);
+  const patches = ["26.17", "26.16", "26.15", "26.14"];
+
+  it("needs no widening when the newest patch is enough", () => {
+    assert.equal(autoWidenTarget(patches, games({ "26.17": 80 }), 50), null);
+  });
+
+  it("reaches back one patch at a time, only as far as needed", () => {
+    const w = autoWidenTarget(patches, games({ "26.17": 10, "26.16": 60 }), 50);
+    assert.deepEqual(w, { from: "26.16", to: "26.17", onLatest: 10, widened: 70, reached: true });
+  });
+
+  it("stops at the reach limit and says it fell short", () => {
+    const w = autoWidenTarget(patches, games({ "26.17": 1, "26.16": 1, "26.15": 1 }), 50);
+    assert.deepEqual(w, { from: "26.15", to: "26.17", onLatest: 1, widened: 3, reached: false });
+  });
+
+  it("has nothing to widen with a single patch", () => {
+    assert.equal(autoWidenTarget(["26.17"], games({ "26.17": 1 }), 50), null);
   });
 });

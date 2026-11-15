@@ -8,10 +8,14 @@ import type { ChampionStats } from "../lib/types";
 import PatchRangeSelect from "../../shared/ui/PatchRangeSelect";
 import { usePatchOptions } from "../hooks/usePatchOptions";
 import { patchesIn, patchLabel, patchParam } from "../../shared/patch";
+import { useAutoWiden } from "../hooks/useAutoWiden";
+import { AutoWidenNotice, WidenHint } from "../../shared/ui/AutoWidenNotice";
 import SourceSwitch, { useStatsSource } from "../components/SourceSwitch";
 import { assignTiers, score } from "../../shared/score";
 import { useSort } from "../../shared/ui/SortHeader";
 import SearchField from "../../shared/ui/SearchField";
+import RoleFilter from "../../shared/ui/RoleFilter";
+import { CHAMPIONS_FOOTNOTE } from "../../shared/ui/boardNotes";
 import QueueSelect, { queueLabel } from "../components/QueueSelect";
 import StatBoard, { SortControl, sortOptions, sortRows } from "../../shared/ui/StatBoard";
 import { championColumns, type ChampionSortKey } from "../../shared/ui/boardColumns";
@@ -23,6 +27,14 @@ export default function Champions() {
   const { patchSelection, setPatchSelection, queue, setQueue } = useStatsFilters();
   const [source, setSource] = useStatsSource();
   const patchOptions = usePatchOptions(source);
+  const widen = useAutoWiden({
+    enabled: source === "community",
+    scope: "board",
+    queue,
+    patchOptions,
+    patchSelection,
+    setPatchSelection,
+  });
   const patches = useMemo(
     () => patchesIn(patchSelection, patchOptions),
     [patchSelection, patchOptions],
@@ -35,6 +47,7 @@ export default function Champions() {
     [patches, queue, source],
   );
   const [search, setSearch] = useState("");
+  const [role, setRole] = useState<string | null>(null);
   // Score-first, like the website: rank is the point of a tier list
   const { sort, toggle } = useSort<ChampionSortKey>("score");
   const navigate = useNavigate();
@@ -93,11 +106,14 @@ export default function Champions() {
   const sorted = useMemo(() => {
     if (!data) return [];
     const q = search.toLowerCase();
-    const filtered = data.filter((c) =>
-      getChampionName(champData, c.champion_id).toLowerCase().includes(q),
+    const filtered = data.filter(
+      (c) =>
+        getChampionName(champData, c.champion_id).toLowerCase().includes(q) &&
+        (!role || champData[c.champion_id]?.tags?.includes(role)),
     );
     return sortRows(filtered, columns, sort);
-  }, [data, columns, search, sort, champData]);
+  }, [data, columns, search, role, sort, champData]);
+  const hasRoles = Object.values(champData).some((c) => c.tags?.length);
 
   // A rejected fetch used to leave "Loading..." on screen forever, which is
   // indistinguishable from a slow one. Say what happened and offer a retry.
@@ -121,17 +137,17 @@ export default function Champions() {
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-2">
         {/* Named the same way the website names it: the queue, the list, then
             the slice the numbers cover - so a game count reads as the patches
             in view for this queue rather than the size of the whole database */}
-        <div>
-          <h1 className="text-xl font-bold text-lol-text-bright">
-            {queueLabel(queue)} Champions Tier List
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">
+            Champions Tier List
           </h1>
-          <p className="text-xs text-lol-text mt-0.5">
-            {label} · {totalGames.toLocaleString()} games
-          </p>
+          <span className="text-xs text-lol-text">
+            {queueLabel(queue)} · {label} · {totalGames.toLocaleString()} games
+          </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <QueueSelect value={queue} onChange={setQueue} />
@@ -140,19 +156,27 @@ export default function Champions() {
             selection={patchSelection}
             onChange={setPatchSelection}
           />
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search champion..."
-            width={192}
-          />
         </div>
       </div>
 
       <SourceSwitch source={source} onChange={setSource} />
 
-      {/* Only visible once the window is narrow enough to drop the header row */}
-      <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
+      {widen.notice && <AutoWidenNotice widen={widen.notice} scope="so far" className="" />}
+      {widen.hint && (
+        <WidenHint widen={widen.hint} scope="so far" onApply={widen.applyHint} className="" />
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs tabular-nums min-w-[6rem] text-lol-text">
+          {sorted.length} champion{sorted.length === 1 ? "" : "s"}
+        </span>
+        {hasRoles && <RoleFilter value={role} onChange={setRole} />}
+        {/* Only visible once the window is narrow enough to drop the header row */}
+        <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
+        <div className="ml-auto w-48">
+          <SearchField value={search} onChange={setSearch} placeholder="Search champion..." />
+        </div>
+      </div>
 
       <StatBoard
         columns={columns}
@@ -161,10 +185,15 @@ export default function Champions() {
         onRowClick={(c) => openChampion(c.champion_id)}
         sort={sort}
         onSort={toggle}
+        sticky="page"
+        topScroll
+        footnote={CHAMPIONS_FOOTNOTE}
         empty={
-          source === "community"
-            ? "No champions in the community data for these filters"
-            : "No champions found"
+          role
+            ? `No ${role} champions match`
+            : source === "community"
+              ? "No champions in the community data for these filters"
+              : "No champions found"
         }
       />
     </div>

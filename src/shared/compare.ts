@@ -1,7 +1,8 @@
 // The maths and bookkeeping behind the Compare tab, kept out of the component
 // so it can be tested on its own.
-import { kdaRatio } from "../../../src/shared/format.ts";
-import { score } from "../../../src/shared/score.ts";
+import { kdaRatio } from "./format.ts";
+import { score } from "./score.ts";
+import { comparePatches } from "./patch.ts";
 
 export interface Row {
   id: number;
@@ -108,4 +109,18 @@ export function splitPinned(
     .map((id) => ranked.find((r) => r.id === id) ?? all.find((r) => r.id === id))
     .filter((r): r is Row => r != null);
   return { shown, pinnedRows };
+}
+
+// The older patch first, whichever order they were handed in
+export function normalizePair(a: string, b: string): [string, string] {
+  return comparePatches(a, b) > 0 ? [b, a] : [a, b];
+}
+
+export interface CompareSides {
+  // The pair these rows are for, so a slow response for an earlier pair is
+  // never drawn under the current one
+  from: string;
+  to: string;
+  champions: [Side[], Side[]];
+  augments: [Side[], Side[]];
 }

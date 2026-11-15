@@ -68,3 +68,46 @@ export function pageScope(i: PageScopeInputs): PageScope {
   if (!i.onChampionPage && i.wasOnChampion) return { type: "reset" };
   return { type: "none" };
 }
+
+// A newest patch with this few games is too thin to rank anything on
+export const AUTO_WIDEN_MIN_GAMES = 50;
+// How many patches back a widening is allowed to reach
+export const AUTO_WIDEN_MAX_PATCHES = 3;
+
+export interface WidenTo {
+  from: string;
+  to: string;
+  // Games on the newest patch alone
+  onLatest: number;
+  // Games across the widened range
+  widened: number;
+  // False when even the full reach-back fell short, so the notice can say so
+  // rather than claim the numbers are now solid
+  reached: boolean;
+}
+
+// How far back the newest patch has to reach to be worth reading. `patches` is
+// newest first; `gamesOn` counts what a set of them holds.
+export function autoWidenTarget(
+  patches: string[],
+  gamesOn: (included: Set<string>) => number,
+  target: number,
+  maxPatches = AUTO_WIDEN_MAX_PATCHES,
+): WidenTo | null {
+  if (patches.length < 2) return null;
+  const included = new Set<string>();
+  let count = 0;
+  for (const patch of patches.slice(0, maxPatches)) {
+    included.add(patch);
+    count = gamesOn(included);
+    if (count >= target) break;
+  }
+  if (included.size < 2) return null;
+  return {
+    from: patches[included.size - 1],
+    to: patches[0],
+    onLatest: gamesOn(new Set([patches[0]])),
+    widened: count,
+    reached: count >= target,
+  };
+}

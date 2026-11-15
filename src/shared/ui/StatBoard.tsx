@@ -118,7 +118,9 @@ export default function StatBoard<Row, K extends string>({
           onScroll={() => follow(topRef.current, mainRef.current)}
           aria-hidden="true"
           className={`overflow-x-auto overflow-y-hidden min-h-[14px] ${
-            sticky === "page" ? "sticky z-10 top-[calc(var(--site-header-h,0px)-1px)]" : ""
+            sticky === "page"
+              ? "sticky z-10 top-[calc(var(--site-header-h,0px)-1px+var(--board-top-inset,0px))]"
+              : ""
           }`}
         >
           <div style={{ width: overflowW, height: 1 }} />

@@ -7,7 +7,7 @@ import {
   splitPinned,
   withRanks,
   type Side,
-} from "../website/src/lib/compare.ts";
+} from "../src/shared/compare.ts";
 
 const side = (id: number, games: number, wins: number): Side => ({
   id,

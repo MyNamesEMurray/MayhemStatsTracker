@@ -15,11 +15,14 @@ import QueueSelect, { queueLabel } from "../components/QueueSelect";
 import RarityFilter, { type Rarity } from "../../shared/ui/RarityFilter";
 import { useSort } from "../../shared/ui/SortHeader";
 import SearchField from "../../shared/ui/SearchField";
+import { AUGMENTS_FOOTNOTE } from "../../shared/ui/boardNotes";
 import StatBoard, { SortControl, sortOptions, sortRows } from "../../shared/ui/StatBoard";
 import AugmentPairs, { type AugmentPairRow } from "../../shared/ui/AugmentPairs";
 import { augmentColumns, type AugmentSortKey } from "../../shared/ui/boardColumns";
 import { assignTiers, score, type Tier } from "../../shared/score";
 import { formatWhole } from "../lib/format";
+import { useAutoWiden } from "../hooks/useAutoWiden";
+import { AutoWidenNotice, WidenHint } from "../../shared/ui/AutoWidenNotice";
 import SourceSwitch, { useStatsSource } from "../components/SourceSwitch";
 import { usePatchOptions } from "../hooks/usePatchOptions";
 import { patchesIn, patchLabel } from "../../shared/patch";
@@ -30,6 +33,14 @@ export default function Augments() {
   const { patchSelection, setPatchSelection, queue, setQueue } = useStatsFilters();
   const [source, setSource] = useStatsSource();
   const patchOptions = usePatchOptions(source);
+  const widen = useAutoWiden({
+    enabled: source === "community",
+    scope: "board",
+    queue,
+    patchOptions,
+    patchSelection,
+    setPatchSelection,
+  });
   const patches = useMemo(
     () => patchesIn(patchSelection, patchOptions),
     [patchSelection, patchOptions],
@@ -202,38 +213,43 @@ export default function Augments() {
 
   return (
     <div className="w-full space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-lol-text-bright">
-          {queueLabel(queue)} Augments Tier List
-        </h1>
-        <p className="text-xs text-lol-text mt-0.5">
-          {label} · {totalGames.toLocaleString()} games
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <RarityFilter value={rarityFilter} onChange={setRarityFilter} />
-        <span className="text-xs text-lol-text self-center ml-2">{sorted.length} augments</span>
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-2">
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Augments Tier List</h1>
+          <span className="text-xs text-lol-text">
+            {queueLabel(queue)} · {label} · {totalGames.toLocaleString()} games
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
           <QueueSelect value={queue} onChange={setQueue} />
           <PatchRangeSelect
             patches={patchOptions}
             selection={patchSelection}
             onChange={setPatchSelection}
           />
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search augment..."
-            width={192}
-          />
         </div>
       </div>
 
       <SourceSwitch source={source} onChange={setSource} />
 
-      {/* Only visible once the window is narrow enough to drop the header row */}
-      <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
+      {widen.notice && <AutoWidenNotice widen={widen.notice} scope="so far" className="" />}
+      {widen.hint && (
+        <WidenHint widen={widen.hint} scope="so far" onApply={widen.applyHint} className="" />
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs tabular-nums min-w-[6rem] text-lol-text">
+          {sorted.length} augment{sorted.length === 1 ? "" : "s"}
+        </span>
+        <div className="grid grid-cols-4 gap-1.5 w-full max-[700px]:[&>button]:px-1 max-[700px]:[&>button]:text-center min-[701px]:flex min-[701px]:flex-wrap min-[701px]:w-auto min-[701px]:items-center">
+          <RarityFilter value={rarityFilter} onChange={setRarityFilter} />
+        </div>
+        {/* Only visible once the window is narrow enough to drop the header row */}
+        <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
+        <div className="ml-auto w-48">
+          <SearchField value={search} onChange={setSearch} placeholder="Search augment..." />
+        </div>
+      </div>
 
       <StatBoard
         columns={columns}
@@ -243,6 +259,9 @@ export default function Augments() {
         sort={sort}
         onSort={toggle}
         minWidth={960}
+        sticky="page"
+        topScroll
+        footnote={AUGMENTS_FOOTNOTE}
         empty="No augments found"
         renderAfterRow={(a) =>
           expanded.has(a.augment_id) ? (

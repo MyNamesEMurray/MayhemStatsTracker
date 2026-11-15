@@ -21,28 +21,3 @@ html {
     zoom: 1.5;
   }
 }
-
-/* The compare board has too many columns to fit, so it scrolls sideways. The
-   name stays put so a row never loses whose numbers they are. Cards (700px and
-   under) don't scroll, so none of this applies there. */
-@media (min-width: 701px) {
-  .cmp-board .stat-board th,
-  .cmp-board .stat-board td {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-  .cmp-board .stat-board th:nth-child(2),
-  .cmp-board .stat-board td:nth-child(2) {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background: var(--color-lol-card);
-  }
-  .cmp-board .stat-board thead td:nth-child(2) {
-    background: var(--pin-bg);
-  }
-  /* The corner cell is pinned on both axes, so it sits above both */
-  .cmp-board .stat-board thead th:nth-child(2) {
-    z-index: 3;
-  }
-}

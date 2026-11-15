@@ -480,19 +480,25 @@ export default function ComparePage({
           Couldn't load these patches: {error}
         </div>
       )}
-      {!error && !ready && (
+      {!error && from === to && (
+        <div className={`${PANEL} p-8 text-center text-sm text-lol-text`}>
+          Pick two different patches to compare. Both dropdowns are on{" "}
+          {formatPatch(from)}.
+        </div>
+      )}
+      {!error && from !== to && !ready && (
         <div className="text-center text-lol-text py-20">
           Loading patches...
         </div>
       )}
-      {!error && ready && (
+      {!error && from !== to && ready && (
         <p className="text-xs tabular-nums">
           {formatPatch(from)}: {joined.totalFrom.toLocaleString()} {view === "champions" ? "games" : "picks"}
           {" · "}
           {formatPatch(to)}: {joined.totalTo.toLocaleString()} {view === "champions" ? "games" : "picks"}
         </p>
       )}
-      {!error && ready && (
+      {!error && from !== to && ready && (
         <div className="cmp-board">
           <StatBoard
             columns={columns}
@@ -505,11 +511,9 @@ export default function ComparePage({
             fitsFrom="xl"
             topScroll
             empty={
-              from === to
-                ? "Pick two different patches to compare."
-                : showThin
-                  ? "Nothing appears on both patches yet."
-                  : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
+              showThin
+                ? "Nothing appears on both patches yet."
+                : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
             }
             footnote={
               <>

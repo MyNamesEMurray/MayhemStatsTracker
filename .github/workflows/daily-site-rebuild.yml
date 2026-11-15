@@ -1,10 +1,11 @@
 name: Daily site rebuild
 
 # Rebuilds the website once a day so the prerendered champion pages and
-# sitemap track the live community data between code pushes. Requires a
-# Cloudflare Pages deploy hook URL stored as the CLOUDFLARE_PAGES_DEPLOY_HOOK
-# repository secret (Pages project -> Settings -> Builds & deployments ->
-# Deploy hooks). Does nothing until that secret exists.
+# sitemap track the live community data between code pushes. Requires a deploy
+# hook URL for the Worker's build (Worker -> Settings -> Build -> Deploy hooks)
+# stored as the CLOUDFLARE_PAGES_DEPLOY_HOOK repository secret - the name is
+# older than the Worker. The job fails without it, so a missing hook shows up
+# as a red run rather than as pages that quietly go stale.
 on:
   schedule:
     - cron: "0 9 * * *"
@@ -19,7 +20,7 @@ jobs:
           HOOK: ${{ secrets.CLOUDFLARE_PAGES_DEPLOY_HOOK }}
         run: |
           if [ -z "$HOOK" ]; then
-            echo "No CLOUDFLARE_PAGES_DEPLOY_HOOK secret set; skipping."
-            exit 0
+            echo "::error::No CLOUDFLARE_PAGES_DEPLOY_HOOK secret set, so nothing was rebuilt."
+            exit 1
           fi
-          curl -sS -X POST "$HOOK"
+          curl -sSf -X POST "$HOOK"

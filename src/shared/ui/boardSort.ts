@@ -18,6 +18,9 @@ export interface BoardColumn<Row, K extends string> {
   // number is the row's position in whatever order is showing).
   key: K | null;
   label: string;
+  // Shown in place of `label` below 1200px, where a long header would run
+  // into its neighbours. Only the visible header changes.
+  shortLabel?: string;
   render: (row: Row, index: number) => ReactNode;
   // What the column sorts by. Strings compare with localeCompare, numbers
   // numerically. A column with a key needs one.
@@ -26,6 +29,9 @@ export interface BoardColumn<Row, K extends string> {
   // Tailwind width class for the header cell
   width?: string;
   cellClass?: string;
+  // Right-align the column's figures and its header, from the table layout up.
+  // Cards keep their own left-aligned layout.
+  align?: "right";
   headerTitle?: string;
   // Columns held back until the window is wide enough to hold them
   detail?: boolean;

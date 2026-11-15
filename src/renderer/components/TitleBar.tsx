@@ -40,7 +40,14 @@ export default function TitleBar({ version }: { version: string }) {
           v{version}
         </button>
       )}
-      <div className="titlebar-no-drag ml-auto flex items-stretch self-stretch">
+      <button
+        onClick={() => window.api.openUrl("https://mayhemstats.com/")}
+        title="Open mayhemstats.com"
+        className="titlebar-no-drag ml-auto mr-2 px-2 py-1 rounded text-[11px] text-lol-text hover:bg-lol-card-hover hover:text-lol-text-bright transition-colors cursor-pointer"
+      >
+        Community site ↗
+      </button>
+      <div className="titlebar-no-drag flex items-stretch self-stretch">
         <button
           onClick={() => window.api.minimizeWindow()}
           title="Minimize"

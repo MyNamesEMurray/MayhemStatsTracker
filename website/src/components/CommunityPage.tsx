@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { buttonClass, LABEL, PANEL, StatTile } from "../../../src/shared/ui/primitives.tsx";
 import {
+  fetchCommunityGrowth,
   fetchCommunityTotals,
   fetchGamesPerDay,
   fetchMatchupCoverage,
+  fetchMedianGamesPerContributor,
   fetchPatchSpans,
+  type CommunityGrowth,
   type CommunityTotals,
   type GamesPerDayRow,
   type MatchupCoverage,
@@ -12,10 +15,20 @@ import {
 } from "../lib/api";
 import { formatPatch } from "../lib/stats";
 
-const CHART_DAYS = 45;
+const CHART_WEEKS = 12;
+const BAR_GAP = 6;
 // A patch label needs this many columns of clear run before the next boundary,
 // or it collides with its neighbour and both become unreadable
-const LABEL_MIN_SPAN = 4;
+const LABEL_MIN_SPAN = 1;
+
+const DAY_MS = 86_400_000;
+const COMPACT = new Intl.NumberFormat("en-US", { notation: "compact" });
+// Monday of the week a YYYY-MM-DD day falls in, as YYYY-MM-DD
+function weekStart(day: string): string {
+  const t = new Date(day + "T00:00:00Z").getTime();
+  const sinceMonday = (new Date(t).getUTCDay() + 6) % 7;
+  return new Date(t - sinceMonday * DAY_MS).toISOString().slice(0, 10);
+}
 
 // The impact of the crowdsourced database: every number here exists because
 // of the one-time seed at launch, which most of it still comes from, or
@@ -26,6 +39,8 @@ export default function CommunityPage() {
   const [perDay, setPerDay] = useState<GamesPerDayRow[]>([]);
   const [spans, setSpans] = useState<PatchSpanRow[]>([]);
   const [coverage, setCoverage] = useState<MatchupCoverage | null>(null);
+  const [growth, setGrowth] = useState<CommunityGrowth | null>(null);
+  const [medianPerContributor, setMedianPerContributor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,35 +49,47 @@ export default function CommunityPage() {
       fetchGamesPerDay(),
       fetchPatchSpans(),
       fetchMatchupCoverage(),
+      fetchCommunityGrowth(),
+      fetchMedianGamesPerContributor(),
     ])
-      .then(([t, d, p, c]) => {
+      .then(([t, d, p, c, g, m]) => {
         setTotals(t);
         setPerDay(d);
         setSpans(p);
         setCoverage(c);
+        setGrowth(g);
+        setMedianPerContributor(m);
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
-  // Bar chart over the last 45 days (gaps filled with zero-game days).
-  // community_games_per_day buckets by game_creation, so a game shows on the
-  // day it was played - a backlog uploaded today lands on its own dates.
+  // Bar chart over the last 12 weeks (Monday start, gaps filled with zero).
+  // community_games_per_day buckets by game_creation, so a game counts in the
+  // week it was played - a backlog uploaded today lands in its own weeks. The
+  // newest bar is the week so far.
   const chart = useMemo(() => {
     if (!perDay.length) return [];
-    const byDay = new Map(perDay.map((r) => [r.day, r.games]));
-    const days: { day: string; games: number }[] = [];
-    const end = new Date(perDay[perDay.length - 1].day + "T00:00:00Z");
-    for (let i = 44; i >= 0; i--) {
-      const d = new Date(end);
-      d.setUTCDate(end.getUTCDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      days.push({ day: key, games: byDay.get(key) ?? 0 });
+    const byWeek = new Map<string, number>();
+    for (const r of perDay) {
+      const w = weekStart(r.day);
+      byWeek.set(w, (byWeek.get(w) ?? 0) + r.games);
     }
-    return days;
+    const last = new Date(weekStart(perDay[perDay.length - 1].day) + "T00:00:00Z").getTime();
+    const weeks: { day: string; end: string; games: number }[] = [];
+    for (let i = CHART_WEEKS - 1; i >= 0; i--) {
+      const t = last - i * 7 * DAY_MS;
+      const key = new Date(t).toISOString().slice(0, 10);
+      weeks.push({
+        day: key,
+        end: new Date(t + 6 * DAY_MS).toISOString().slice(0, 10),
+        games: byWeek.get(key) ?? 0,
+      });
+    }
+    return weeks;
   }, [perDay]);
   const maxGames = Math.max(1, ...chart.map((d) => d.games));
 
-  // Which patch each day belongs to, for the bar tooltips
+  // Which patch a day belongs to, for the bar tooltips
   const patchForDay = useMemo(() => {
     const ordered = [...spans].sort((a, b) => a.first_seen.localeCompare(b.first_seen));
     return (day: string) => {
@@ -81,13 +108,17 @@ export default function CommunityPage() {
     if (chart.length === 0 || spans.length === 0) return [];
     const columnOf = new Map(chart.map((d, i) => [d.day, i + 1]));
     const found = spans
-      .map((s) => ({ patch: formatPatch(s.patch), column: columnOf.get(s.first_seen) }))
-      // Column 1 is the window opening mid-patch, not a boundary to draw
+      .map((s) => ({
+        patch: formatPatch(s.patch),
+        column: columnOf.get(weekStart(s.first_seen)),
+      }))
+      // Column 1 is the window opening mid-patch, not a boundary to draw. A
+      // patch that starts mid-week gets its rule before that week's bar.
       .filter((m): m is { patch: string; column: number } => m.column != null && m.column > 1)
       .sort((a, b) => a.column - b.column);
     return found.map((m, i) => ({
       ...m,
-      showLabel: (found[i + 1]?.column ?? CHART_DAYS + 1) - m.column >= LABEL_MIN_SPAN,
+      showLabel: (found[i + 1]?.column ?? CHART_WEEKS + 1) - m.column >= LABEL_MIN_SPAN,
     }));
   }, [chart, spans]);
 
@@ -106,8 +137,20 @@ export default function CommunityPage() {
     coverage && possibleMatchups > 0
       ? ((coverage.matchups / possibleMatchups) * 100).toFixed(1)
       : "0.0";
+  // Median of the complete weeks in the chart; the newest bar is still filling
+  const full = chart
+    .slice(0, -1)
+    .map((w) => w.games)
+    .sort((a, b) => a - b);
+  const mid = Math.floor(full.length / 2);
+  const perWeek = full.length
+    ? Math.round(full.length % 2 ? full[mid] : (full[mid - 1] + full[mid]) / 2)
+    : 0;
 
   const hours = totals ? totals.total_seconds / 3600 : 0;
+  const formatHours = (h: number) => (h >= 100 ? Math.round(h).toLocaleString() : h.toFixed(1));
+  const plus = (n: number | null | undefined, unit = "") =>
+    n ? `+${n.toLocaleString()}${unit} / 30d` : undefined;
   const performances = totals ? totals.games * 10 : 0;
   const since = totals?.first_game_ms
     ? new Date(totals.first_game_ms).toLocaleDateString("en-US", {
@@ -119,7 +162,7 @@ export default function CommunityPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
-        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Community impact</h1>
+        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Community Impact</h1>
         {since && <span className="text-xs">counting since {since}</span>}
       </div>
       <p className="text-[13px] mb-4 max-w-[64ch]">
@@ -128,73 +171,108 @@ export default function CommunityPage() {
         is the running total of what that adds up to.
       </p>
 
+      <p className={`${LABEL} mb-2`}>Contribution</p>
       <div className="grid grid-cols-2 min-[881px]:grid-cols-4 gap-4">
         <StatTile
           label="Contributors"
           value={totals ? totals.contributors.toLocaleString() : "-"}
-          sub="players sharing their games"
+          delta={plus(growth?.new_contributors_30d)}
         />
         <StatTile
           label="Games analyzed"
           value={totals ? totals.games.toLocaleString() : "-"}
-          sub={`${performances.toLocaleString()} player performances`}
+          delta={plus(growth?.new_games_30d)}
         />
         <StatTile
           label="Gameplay analyzed"
-          value={
-            totals
-              ? `${hours >= 100 ? Math.round(hours).toLocaleString() : hours.toFixed(1)} h`
-              : "-"
-          }
-          sub="of ARAM Mayhem, end to end"
+          value={totals ? `${formatHours(hours)} h` : "-"}
+          delta={plus(growth && Math.round(growth.new_seconds_30d / 3600), " h")}
         />
+        <StatTile
+          label="Player performances"
+          value={totals ? performances.toLocaleString() : "-"}
+        />
+      </div>
+
+      <p className={`${LABEL} mb-2`}>Coverage</p>
+      <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
         <StatTile
           label="Champion matchups"
           value={coverage ? coverage.matchups.toLocaleString() : "-"}
-          sub={
-            coverage
-              ? `${matchupPct}% of the ${possibleMatchups.toLocaleString()} possible`
-              : "unique pairings seen"
+        />
+        <StatTile label="Matchup coverage" value={coverage ? `${matchupPct}%` : "-"} />
+        <StatTile label="Patches tracked" value={totals ? totals.patches : "-"} />
+      </div>
+
+      <p className={`${LABEL} mb-2`}>Averages</p>
+      <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
+        <StatTile
+          label="Game length (mean)"
+          value={
+            totals && totals.games > 0
+              ? `${Math.round(totals.total_seconds / totals.games / 60)} min`
+              : "-"
           }
+        />
+        <StatTile
+          label="Games per contributor (median)"
+          value={medianPerContributor != null ? medianPerContributor.toLocaleString() : "-"}
+        />
+        <StatTile
+          label="Games per week (median)"
+          value={perWeek ? perWeek.toLocaleString() : "-"}
         />
       </div>
 
       <div className={`${PANEL} p-[18px]`}>
-        <p className={`${LABEL} mb-3`}>Games played - last 45 days</p>
+        <p className={`${LABEL} mb-3`}>Games played per week - last 12 weeks</p>
         {chart.length === 0 ? (
           <p className="text-sm text-lol-text">No data yet.</p>
         ) : (
           <div>
-            {/* One grid column per day, so the marker overlay can sit on the
-                same track sizing and land exactly on its boundary day */}
+            {/* One grid column per week, so the marker overlay shares the track
+                sizing and each rule lands in the gap before its week's bar */}
             <div className="relative">
               <div
-                className="grid items-end gap-[3px] h-28"
-                style={{ gridTemplateColumns: `repeat(${CHART_DAYS}, minmax(0, 1fr))` }}
+                className="grid items-end h-28 pt-4"
+                style={{
+                  gridTemplateColumns: `repeat(${CHART_WEEKS}, minmax(0, 1fr))`,
+                  gap: BAR_GAP,
+                }}
               >
                 {chart.map((d) => {
-                  const patch = patchForDay(d.day);
+                  const patch = patchForDay(d.end);
                   return (
                     <div
                       key={d.day}
-                      className="rounded-t-[3px] bg-lol-gold/70 hover:bg-lol-gold transition-colors min-w-0"
+                      className="relative rounded-t-[3px] bg-lol-gold/70 hover:bg-lol-gold transition-colors min-w-0"
                       style={{
                         height: `${Math.max(d.games > 0 ? 6 : 1.5, (d.games / maxGames) * 100)}%`,
                       }}
-                      title={`${d.day}: ${d.games} game${d.games === 1 ? "" : "s"}${patch ? ` · patch ${patch}` : ""}`}
-                    />
+                      title={`Week of ${d.day}: ${d.games} game${d.games === 1 ? "" : "s"}${patch ? ` · patch ${patch}` : ""}`}
+                    >
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 whitespace-nowrap text-[10px] text-lol-text">
+                        {COMPACT.format(d.games)}
+                      </span>
+                    </div>
                   );
                 })}
               </div>
               <div
-                className="absolute inset-0 grid gap-[3px] pointer-events-none"
-                style={{ gridTemplateColumns: `repeat(${CHART_DAYS}, minmax(0, 1fr))` }}
+                className="absolute inset-0 grid pointer-events-none"
+                style={{
+                  gridTemplateColumns: `repeat(${CHART_WEEKS}, minmax(0, 1fr))`,
+                  gap: BAR_GAP,
+                }}
               >
                 {markers.map((m) => (
                   <div
                     key={m.patch}
                     className="relative border-l border-dashed border-lol-gold/45"
-                    style={{ gridColumn: `${m.column} / span 1` }}
+                    style={{
+                      gridColumn: `${m.column} / span 1`,
+                      transform: `translateX(-${BAR_GAP / 2}px)`,
+                    }}
                   >
                     {m.showLabel && (
                       <span className="absolute -top-0.5 left-[3px] whitespace-nowrap bg-lol-card px-1 text-[9px] tracking-[.04em] text-lol-gold">

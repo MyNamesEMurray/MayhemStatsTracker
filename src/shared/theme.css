@@ -76,7 +76,7 @@ body {
   }
 
   .select-sm {
-    --select-w: 7.5rem;
+    --select-w: 9rem;
   }
 
   .select-lg {
@@ -113,6 +113,38 @@ body {
     outline: none;
     border-color: color-mix(in srgb, var(--color-lol-gold) 50%, transparent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-lol-gold) 10%, transparent);
+  }
+
+  /* A checkbox in the site's own colours: a dark box like the inputs, gold
+     when on. The tick is a background image so it needs no extra element. */
+  .checkbox {
+    appearance: none;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    border: 1px solid var(--color-lol-border);
+    border-radius: 0.3rem;
+    background-color: var(--color-lol-card);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0.75rem;
+    cursor: pointer;
+    transition:
+      background-color 150ms,
+      border-color 150ms;
+  }
+  .checkbox:hover {
+    border-color: color-mix(in srgb, var(--color-lol-gold) 50%, transparent);
+  }
+  .checkbox:checked {
+    border-color: var(--color-lol-gold);
+    background-color: color-mix(in srgb, var(--color-lol-gold) 20%, var(--color-lol-card));
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8c874' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5L20 7'/%3E%3C/svg%3E");
+  }
+  .checkbox:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-lol-gold) 20%, transparent);
   }
 
   /* Reserve the scrollbar's space whether or not it's showing, so content
@@ -178,7 +210,7 @@ body {
        and score, because sharing one with the tier badge let a longer
        champion push into the badge, and wrapping the name to fix that looked
        worse than the overlap. */
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "rank name name score"
       "tier bar  bar  bar";
@@ -188,7 +220,7 @@ body {
   }
   /* A board with no rank column gives the row's first column to the name */
   .stat-board[data-rank="no"] tbody tr {
-    grid-template-columns: 1fr 1fr auto auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
     grid-template-areas:
       "name name name score"
       "tier bar  bar  bar";
@@ -230,6 +262,9 @@ body {
   }
   .stat-board td[data-label] {
     white-space: normal !important;
+    /* Labelled figures share a grid row; top-aligning keeps every label on one
+       line even when one value, like KDA, is taller than its neighbours */
+    align-self: start;
   }
   .stat-board td[data-label]::before {
     content: attr(data-label);
@@ -267,4 +302,74 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #3a4457;
+}
+
+/* Frozen board header. Opt-in per board through a prop on StatBoard. The
+   whole <thead> sticks, not its cells, so pinned rows inside it freeze along
+   with the header row. */
+.stat-board[data-sticky] thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.stat-board[data-sticky] thead th {
+  background: var(--color-lol-card);
+  box-shadow: inset 0 -1px var(--color-lol-border);
+}
+/* The frozen header is a flat band over a rounded panel; matching the panel's
+   top corners keeps it from reading as square-ish at rest and while stuck */
+.stat-board[data-sticky] thead th:first-child {
+  border-top-left-radius: 0.75rem;
+}
+.stat-board[data-sticky] thead th:last-child {
+  border-top-right-radius: 0.75rem;
+}
+/* Pinned rows: a gold wash so they read as held, not as part of the list */
+.stat-board {
+  --pin-bg: color-mix(in srgb, var(--color-lol-gold) 9%, var(--color-lol-card));
+}
+.stat-board .board-pinned td,
+.stat-board .board-pinned-card td {
+  background: var(--pin-bg);
+}
+.stat-board .board-pinned td {
+  box-shadow: inset 0 1px var(--color-lol-border);
+}
+.stat-board .board-pinned:last-of-type td {
+  box-shadow:
+    inset 0 1px var(--color-lol-border),
+    inset 0 -1px color-mix(in srgb, var(--color-lol-gold) 45%, transparent);
+}
+@media (min-width: 701px) {
+  .stat-board .board-pinned-card {
+    display: none;
+  }
+  /* One row height for every board. A table row's height is a minimum, so
+     this holds the icon-and-name rows level without clipping anything taller. */
+  .stat-board tbody tr:not(.board-expansion),
+  .stat-board thead tr.board-pinned {
+    height: 3rem;
+  }
+}
+@media (max-width: 700px) {
+  .stat-board .board-pinned {
+    display: none;
+  }
+  /* In a card the wash goes on the card, not each cell, or the gaps between
+     the labelled figures show through as patches. */
+  .stat-board .board-pinned-card {
+    background: var(--pin-bg);
+  }
+  .stat-board .board-pinned-card td {
+    background: transparent;
+  }
+}
+@media (min-width: 768px) {
+  /* The site header is frozen from 768px, and its height is measured into
+     --site-header-h because it wraps to a second row at some widths. */
+  .stat-board[data-sticky="page"] thead {
+    /* The measured height can be fractional, and a 1px overlap under the
+       header (which sits above this) leaves no sliver to see rows through */
+    top: calc(var(--site-header-h, 0px) - 1px);
+  }
 }

@@ -2,6 +2,7 @@ import https from "https";
 import fs from "fs";
 import path from "path";
 import { getDataDir } from "./paths";
+import { isFinishedItem } from "../shared/items";
 import { toClientPatch } from "../shared/patch";
 import {
   applyDescriptions,
@@ -194,25 +195,6 @@ export type ItemInfo = {
   completed: boolean;
 };
 
-// An item is finished when it builds into nothing and costs enough to be a
-// real purchase - which keeps the ones that only look like components, since
-// Manamune and Archangel's Staff transform into Muramana and Seraph's
-// Embrace, modelled as separate items rather than a recipe. Mode-specific
-// prismatics (six-digit ids) count whatever they cost. Tier-2 boots do build
-// into tier-3, so they are kept by being built *from* the 300g starter pair.
-function isCompleted(item: any): boolean {
-  const buildsInto = Array.isArray(item.to) ? item.to.length : 0;
-  const builtFrom = Array.isArray(item.from) ? item.from.length : 0;
-  const categories: string[] = Array.isArray(item.categories) ? item.categories : [];
-  const price: number = item.priceTotal ?? 0;
-  return (
-    (buildsInto === 0 &&
-      !categories.includes("Consumable") &&
-      (price >= 500 || item.id >= 100000)) ||
-    (categories.includes("Boots") && builtFrom > 0)
-  );
-}
-
 const itemCache = new Map<string, Record<number, ItemInfo>>();
 const itemPromises = new Map<string, Promise<Record<number, ItemInfo>>>();
 let latestLivePatch: string | null = null;
@@ -272,7 +254,7 @@ export function loadItemData(patch?: string): Promise<Record<number, ItemInfo>> 
             name: item.name || "",
             iconPath: item.iconPath || "",
             branch,
-            completed: isCompleted(item),
+            completed: isFinishedItem(item),
           };
         }
       }

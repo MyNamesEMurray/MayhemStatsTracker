@@ -1,4 +1,5 @@
 import { augmentIconUrl } from "../cdn";
+import FitName from "./FitName";
 import { useAugments } from "./GameData";
 import { RARITY_LABEL, RARITY_RING, RARITY_TEXT } from "./rarity";
 import { useTooltip } from "./useTooltip";
@@ -8,6 +9,7 @@ export default function AugmentIcon({
   size = 28,
   showName = false,
   wrap = false,
+  fit = false,
 }: {
   augmentId: number;
   size?: number;
@@ -15,6 +17,10 @@ export default function AugmentIcon({
   // Let a long name run onto a second line instead of being cut off, for
   // layouts where the full name matters more than a fixed row height.
   wrap?: boolean;
+  // For a fixed row height: a long name drops to a smaller size and wraps to
+  // two lines that together are no taller than the icon, so it is shown in
+  // full and the row does not grow.
+  fit?: boolean;
 }) {
   const aug = useAugments()[augmentId];
   // Icons are usually drawn without a name - a scoreboard cell, a match row, a
@@ -65,11 +71,14 @@ export default function AugmentIcon({
           }}
         />
       )}
-      {showName && (
-        <span className={`text-sm ${wrap ? "leading-snug" : "truncate"} ${nameColor}`}>
-          {aug.name}
-        </span>
-      )}
+      {showName &&
+        (fit ? (
+          <FitName className={nameColor}>{aug.name}</FitName>
+        ) : (
+          <span className={`text-sm ${wrap ? "leading-snug" : "truncate"} ${nameColor}`}>
+            {aug.name}
+          </span>
+        ))}
       {tooltip}
     </div>
   );

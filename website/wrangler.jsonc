@@ -11,6 +11,13 @@
 {
   "name": "mayhemstats",
   "compatibility_date": "2026-09-20",
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true,
+    },
+  },
   "assets": {
     // Relative to this file, so website/dist - what `npm run build` writes.
     "directory": "./dist",

@@ -108,19 +108,53 @@ export function fetchChampionStats(patches?: string[]): Promise<ChampionStatRow[
   );
 }
 
-export async function fetchAugmentTotals(patches?: string[]): Promise<AugmentTotalRow[]> {
+// Throws on failure, so a caller that can show an error (Compare) does.
+export function fetchAugmentTotalsStrict(patches?: string[]): Promise<AugmentTotalRow[]> {
+  return fetchAllRows<AugmentTotalRow>(
+    "augment_totals",
+    `select=*&order=patch,queue_id,augment_id${patchFilter(patches)}`,
+  );
+}
+
+// For the tier lists, which must not go down with the augment rollup: it can be
+// one migration behind the client during a deploy, and an empty augment tab is
+// a bad half-hour where an unusable champion list is worse. A failure is
+// reported rather than hidden, because an empty list and a failed one look the
+// same to the caller and only one of them should be retried.
+export async function fetchAugmentTotalsReport(
+  patches?: string[],
+): Promise<{ rows: AugmentTotalRow[]; failed: boolean }> {
   try {
-    return await fetchAllRows<AugmentTotalRow>(
-      "augment_totals",
-      `select=*&order=patch,queue_id,augment_id${patchFilter(patches)}`,
-    );
+    return { rows: await fetchAugmentTotalsStrict(patches), failed: false };
   } catch (err) {
-    // The rollup is one migration behind the client during a deploy. An empty
-    // augment tab is a bad half-hour; taking the champion tier list down with
-    // it - which is what letting this reject would do - is worse.
     console.warn(`augment_totals unavailable: ${err instanceof Error ? err.message : err}`);
-    return [];
+    return { rows: [], failed: true };
   }
+}
+
+// The Compare tab asks for two patches at a time and flips between them, so it
+// keeps what it fetched for a few minutes instead of downloading it again. In
+// memory only: the tier lists refetch fresh rollups on every visit, and a saved
+// copy hours older than theirs would make the two disagree.
+const COMPARE_TTL_MS = 10 * 60 * 1000;
+const championStatsCache = createPatchRowCache<ChampionStatRow>({
+  view: "champion_stats",
+  ttlMs: COMPARE_TTL_MS,
+});
+const augmentTotalsCache = createPatchRowCache<AugmentTotalRow>({
+  view: "augment_totals",
+  ttlMs: COMPARE_TTL_MS,
+});
+
+export function fetchChampionStatsFor(patches: string[]): Promise<ChampionStatRow[]> {
+  return championStatsCache.load("compare", patches, fetchChampionStats);
+}
+
+// The strict fetch, so a failure rejects and is not cached. The forgiving one
+// would store an empty list for ten minutes and Compare would say there is no
+// data until it expired.
+export function fetchAugmentTotalsFor(patches: string[]): Promise<AugmentTotalRow[]> {
+  return augmentTotalsCache.load("compare", patches, fetchAugmentTotalsStrict);
 }
 
 // Everything below is per-champion or per-augment, fetched when a page that
@@ -174,15 +208,26 @@ export interface AugmentPairRow {
 // Every pairing one augment appears in. The rollup stores each pair once with
 // the lower id first, so an augment can be on either side and both have to be
 // asked for.
+const augmentPairs = createPatchRowCache<AugmentPairRow>({
+  view: "augment_pairs",
+  store: localStore,
+});
+
 export async function fetchAugmentPairs(
   augmentId: number,
   patches?: string[],
 ): Promise<AugmentPairRow[]> {
   try {
-    return await fetchAllRows<AugmentPairRow>(
-      "augment_pairs",
-      `select=*&or=(augment_a.eq.${augmentId},augment_b.eq.${augmentId})` +
-        `&order=patch,queue_id,augment_a,augment_b${patchFilter(patches)}`,
+    // Only the patches the page is showing, and kept: opening a row used to
+    // download every patch and queue for the augment and drop them all on close.
+    // A failure rejects and is not cached; it is caught here, outside the cache.
+    return await augmentPairs.load(`augment:${augmentId}`, patches, (p) =>
+      fetchAllRows<AugmentPairRow>(
+        "augment_pairs",
+        `select=*&or=(augment_a.eq.${augmentId},augment_b.eq.${augmentId})` +
+          `&order=patch,queue_id,augment_a,augment_b${patchFilter(p)}`,
+        { count: false },
+      ),
     );
   } catch {
     // The newest rollup of the lot. A deploy that lands before the view does
@@ -286,6 +331,32 @@ export async function fetchPatchSpans(): Promise<PatchSpanRow[]> {
 export interface MatchupCoverage {
   matchups: number;
   champions: number;
+}
+
+// What the database gained in the last 30 days. Optional garnish on the
+// stat tiles: a missing view yields no deltas rather than an error.
+export interface CommunityGrowth {
+  new_contributors_30d: number;
+  new_games_30d: number;
+  new_seconds_30d: number;
+}
+
+export async function fetchCommunityGrowth(): Promise<CommunityGrowth | null> {
+  try {
+    const rows = await fetchAllRows<CommunityGrowth>("community_growth");
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchMedianGamesPerContributor(): Promise<number | null> {
+  try {
+    const rows = await fetchAllRows<{ median_games_per_contributor: number }>("community_medians");
+    return rows[0]?.median_games_per_contributor ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchMatchupCoverage(): Promise<MatchupCoverage | null> {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  fetchAugmentTotals,
+  fetchAugmentTotalsReport,
+  fetchAugmentTotalsStrict,
   fetchChampionAugments,
   fetchChampionItems,
   fetchChampionMatchups,
@@ -34,22 +35,23 @@ import {
   // that produces one from a selection
   patchParam as encodePatchParam,
   patchesIn,
-  MAYHEM_QUEUE_IDS,
   QUEUE_LABELS,
   type Filters,
 } from "./lib/stats";
 import AdSlot from "./components/AdSlot";
+import { pageScope, showsWidenHint, widenAction } from "./lib/autoWiden";
+import { parsePins } from "./lib/compare";
 import CommunityPage from "./components/CommunityPage";
+import ComparePage from "./components/ComparePage";
 import AugmentsTable from "./components/AugmentsTable";
 import ChampionDetail from "./components/ChampionDetail";
 import ChampionsTable from "./components/ChampionsTable";
 import PatchRangeSelect from "../../src/shared/ui/PatchRangeSelect";
-import QueueSelect from "../../src/shared/ui/QueueSelect";
 import { AD_SLOTS, loadAdSense } from "./lib/adsense";
 import { championSlug } from "./lib/slug";
 import { useUrlState } from "./lib/urlState";
 
-type Tab = "augments" | "champions";
+type Tab = "augments" | "champions" | "compare";
 
 // What every page needs, and only that. The per-champion item and augment
 // grains are ~580k rows between them and grow with every contributed game;
@@ -92,12 +94,34 @@ export default function App() {
   const [patchList, setPatchList] = useState<string[]>([]);
   const [loadedPatches, setLoadedPatches] = useState<Set<string>>(() => new Set());
   const [loadingMore, setLoadingMore] = useState(false);
+  // Patches whose augment rows failed to load ("*" when every patch was asked
+  // for at once). The champion rows for them did load, so they count as loaded;
+  // this is what lets the Augments tab say so and offer a retry.
+  const [failedAugments, setFailedAugments] = useState<string[]>([]);
+  const noteAugments = useCallback((patches: string[] | undefined, failed: boolean) => {
+    if (failed) setFailedAugments((prev) => [...new Set([...prev, ...(patches ?? ["*"])])]);
+  }, []);
+  const retryAugments = async () => {
+    const wanted = failedAugments.includes("*") ? undefined : failedAugments;
+    try {
+      const rows = await fetchAugmentTotalsStrict(wanted);
+      setData((d) => (d ? { ...d, augmentRows: [...d.augmentRows, ...rows] } : d));
+      setFailedAugments([]);
+    } catch {
+      // Still failing: the notice stays up for another try
+    }
+  };
   const { path, params, setParam, navigate, replaceUrl } = useUrlState();
 
   // Champions tier list is the home tab; ?tab=champions from legacy links
   // simply falls through to the default
-  const tab: Tab = params.get("tab") === "augments" ? "augments" : "champions";
+  const tabParam = params.get("tab");
+  const tab: Tab =
+    tabParam === "augments" ? "augments" : tabParam === "compare" ? "compare" : "champions";
   const patchParam = params.get("patch");
+  // Compare's pinned ids, parsed once per change of the parameter
+  const pinParam = params.get("pin");
+  const pinned = useMemo(() => parsePins(pinParam), [pinParam]);
   const queueParam = params.get("queue");
 
   // Champion pages live at /champion/<slug>/ (prerendered server-side); the
@@ -116,7 +140,8 @@ export default function App() {
       }
       return null;
     }
-    return legacyChampion ? Number(legacyChampion) : null;
+    // A hand-edited ?champion=abc is no champion, not a request for NaN
+    return legacyChampion && /^\d+$/.test(legacyChampion) ? Number(legacyChampion) : null;
   }, [championSlugFromPath, legacyChampion, data]);
 
   // The prerendered static block is a fallback for readers who arrive before
@@ -152,6 +177,20 @@ export default function App() {
     loadAdSense();
   }, []);
 
+  // Frozen table headers sit just under this one, and it wraps to a second
+  // row at some widths, so its height is measured rather than assumed
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const set = () =>
+      document.documentElement.style.setProperty("--site-header-h", `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Loading runs in stages, because the board only ever renders a few patches
   // and used to download all of them to do it.
   //
@@ -180,14 +219,15 @@ export default function App() {
       // empty board; fetching everything is what this did before staging and
       // is never wrong, only slower.
       const first = newest.length > 0 ? newest.slice(0, 1) : undefined;
-      const [championRows, augmentRows, championData, augmentData] = await Promise.all([
+      const [championRows, augments, championData, augmentData] = await Promise.all([
         fetchChampionStats(first),
-        fetchAugmentTotals(first),
+        fetchAugmentTotalsReport(first),
         loadChampionData(),
         loadAugmentData(),
       ]);
       if (!active) return;
-      setData({ championRows, augmentRows, championData, augmentData });
+      noteAugments(first, augments.failed);
+      setData({ championRows, augmentRows: augments.rows, championData, augmentData });
       // Everything that came back is loaded, whichever way it was asked for
       setLoadedPatches(new Set(first ?? championRows.map((r) => r.patch)));
 
@@ -195,17 +235,23 @@ export default function App() {
       const widenReach = newest.slice(0, AUTO_WIDEN_MAX_PATCHES);
       if (first && widenReach.length > first.length) {
         const rest = widenReach.slice(first.length);
+        // Claimed before the fetch, not after: the effect below loads whatever
+        // a deep link asks for that is not marked loaded, and with these still
+        // unmarked it fetched the same patches a second time and both sets of
+        // rows were added, doubling the games for ?patch=all.
+        setLoadedPatches((prev) => new Set([...prev, ...rest]));
         const [moreChamps, moreAugs] = await Promise.all([
           fetchChampionStats(rest),
-          fetchAugmentTotals(rest),
+          fetchAugmentTotalsReport(rest),
         ]);
         if (!active) return;
+        noteAugments(rest, moreAugs.failed);
         setData((d) =>
           d
             ? {
                 ...d,
                 championRows: [...d.championRows, ...moreChamps],
-                augmentRows: [...d.augmentRows, ...moreAugs],
+                augmentRows: [...d.augmentRows, ...moreAugs.rows],
               }
             : d,
         );
@@ -279,19 +325,24 @@ export default function App() {
     if (!data || patchList.length === 0) return;
     const wanted = patchesIn(parsePatchParam(patchParam, patches), patches) ?? patches;
     const missing = wanted.filter((p) => !loadedPatches.has(p));
-    if (missing.length === 0) return;
+    if (missing.length === 0) {
+      // A run that was cancelled mid-fetch never cleared this
+      setLoadingMore(false);
+      return;
+    }
 
     let active = true;
     setLoadingMore(true);
-    Promise.all([fetchChampionStats(missing), fetchAugmentTotals(missing)])
+    Promise.all([fetchChampionStats(missing), fetchAugmentTotalsReport(missing)])
       .then(([moreChamps, moreAugs]) => {
         if (!active) return;
+        noteAugments(missing, moreAugs.failed);
         setData((d) =>
           d
             ? {
                 ...d,
                 championRows: [...d.championRows, ...moreChamps],
-                augmentRows: [...d.augmentRows, ...moreAugs],
+                augmentRows: [...d.augmentRows, ...moreAugs.rows],
               }
             : d,
         );
@@ -307,6 +358,13 @@ export default function App() {
       active = false;
     };
   }, [patchParam, patches, patchList, data, loadedPatches]);
+
+  // Compare's own settings do not follow the reader to other tabs or into
+  // champion URLs
+  useEffect(() => {
+    if (tab === "compare") return;
+    for (const key of ["pin", "from", "to", "view"]) if (params.has(key)) setParam(key, null);
+  }, [tab, params, setParam]);
 
   const queues = useMemo(() => (data ? availableQueues(data.championRows) : []), [data]);
 
@@ -333,13 +391,9 @@ export default function App() {
         ? QUEUE_LABELS[DEFAULT_QUEUE]
         : (QUEUE_LABELS[queue] ?? `Queue ${queue}`);
 
-  // What the picker shows, which is not always what the tables filter on: the
-  // first rows have not landed on the very first paint, so `queues` is empty
-  // and `queue` resolves to undefined. Reading the parameter the way the
-  // label does keeps the control showing the default instead of blinking out
-  // of the header and back in a beat later.
-  const queueOptions = queues.length > 0 ? queues : MAYHEM_QUEUE_IDS;
-  const selectedQueue = queueParam === "all" ? undefined : (queue ?? DEFAULT_QUEUE);
+  // There is no queue picker: ARAM Mayhem is the only queue still receiving
+  // games (Mayhem Classic's last game was 2026-08-28). ?queue= still works for
+  // a direct link; bring the picker back if a second live queue appears.
 
   // Default view is the current patch; ?patch= also supports "all", a single
   // patch, or an inclusive "A-B" range
@@ -396,46 +450,62 @@ export default function App() {
   // champion shouldn't quietly change what the tier list shows afterwards -
   // and neither should a range the reader picked while looking at that
   // champion, since they chose it to read one page, not to change the site.
+  // The decisions live in lib/autoWiden.ts, where they are tested.
   const boardPatch = useRef<string | null>(null);
   const wasOnChampion = useRef(false);
   const lastChampion = useRef<number | null>(null);
-
-  // Applied once per champion (and once for the board), so choosing "current
-  // patch" afterwards isn't immediately undone by this
   const widenedFor = useRef<string | null>(null);
-  // The range this widened to. Without it the effect below sees the param it
-  // just wrote, reads it as the reader's own choice, and clears the banner on
-  // the very next render - so the range moved with nothing explaining why.
   const appliedParam = useRef<string | null>(null);
   const [autoWiden, setAutoWiden] = useState<typeof autoWidenTo>(null);
+
+  const widenKey = `${selectedChampion ?? "board"}:${queue ?? "all"}`;
+  const widenInputs = {
+    patchParam,
+    key: widenKey,
+    widenedFor: widenedFor.current,
+    appliedParam: appliedParam.current,
+    hasNotice: autoWiden != null,
+    widenTo: autoWidenTo,
+  };
+  const showWidenHint = showsWidenHint(widenInputs);
+
   useEffect(() => {
-    const key = `${selectedChampion ?? "board"}:${queue ?? "all"}`;
-    if (patchParam != null) {
-      // Anything other than the range we set is the reader overriding it
-      if (patchParam !== appliedParam.current && autoWiden) setAutoWiden(null);
-      return;
+    const action = widenAction({
+      patchParam,
+      key: widenKey,
+      widenedFor: widenedFor.current,
+      appliedParam: appliedParam.current,
+      hasNotice: autoWiden != null,
+      widenTo: autoWidenTo,
+    });
+    if (action.type === "clear") setAutoWiden(null);
+    else if (action.type === "apply" && autoWidenTo) {
+      widenedFor.current = widenKey;
+      appliedParam.current = action.range;
+      setAutoWiden(autoWidenTo);
+      setParam("patch", action.range);
     }
-    if (widenedFor.current === key || !autoWidenTo) return;
+  }, [patchParam, autoWidenTo, widenKey, setParam, autoWiden]);
+
+  const applyWiden = () => {
+    if (!autoWidenTo) return;
     const range = `${autoWidenTo.from}-${autoWidenTo.to}`;
-    widenedFor.current = key;
     appliedParam.current = range;
     setAutoWiden(autoWidenTo);
     setParam("patch", range);
-  }, [patchParam, autoWidenTo, selectedChampion, queue, setParam, autoWiden]);
+  };
 
   useEffect(() => {
-    if (onChampionPage && !wasOnChampion.current) {
+    const scope = pageScope({
+      onChampionPage,
+      wasOnChampion: wasOnChampion.current,
+      selectedChampion,
+      lastChampion: lastChampion.current,
+    });
+    if (scope.type === "enter") {
       boardPatch.current = patchParam;
-    } else if (onChampionPage && selectedChampion !== lastChampion.current) {
-      // Cross-linked from one champion to another: the range the last one
-      // needed says nothing about this one, so start it over from the board's
+    } else if (scope.type === "reset") {
       if (patchParam !== boardPatch.current) setParam("patch", boardPatch.current);
-      widenedFor.current = null;
-      appliedParam.current = null;
-      setAutoWiden(null);
-    } else if (!onChampionPage && wasOnChampion.current) {
-      if (patchParam !== boardPatch.current) setParam("patch", boardPatch.current);
-      // Let the next champion page widen from scratch
       widenedFor.current = null;
       appliedParam.current = null;
       setAutoWiden(null);
@@ -473,7 +543,7 @@ export default function App() {
   const navTab = (label: string, active: boolean, onClick: () => void) => (
     <button
       onClick={onClick}
-      className={`flex items-center px-3.5 max-[360px]:px-2 text-[13px] font-semibold transition-colors ${
+      className={`flex items-center max-[600px]:justify-center px-3.5 max-[600px]:px-1 max-[600px]:py-2.5 text-[13px] max-[360px]:text-[11px] font-semibold transition-colors ${
         active
           ? "text-lol-gold-light shadow-[inset_0_-2px_0_var(--color-lol-gold)]"
           : "text-lol-text hover:text-lol-gold-light"
@@ -489,11 +559,14 @@ export default function App() {
     <GameDataProvider augments={data?.augmentData ?? NO_AUGMENTS}>
       <div className="min-h-screen">
         {/* Unified chrome: full-width bar, frozen to the top on desktop */}
-        <header className="md:sticky md:top-0 md:z-40 bg-lol-dark/85 backdrop-blur-md border-b border-lol-border/60">
+        <header
+          ref={headerRef}
+          className="md:sticky md:top-0 md:z-40 bg-lol-dark border-b border-lol-border/60"
+        >
           {/* Wraps at every width: logo + nav + the whole filter group only fit
             one row above ~1080px, and forcing nowrap below that pushed the
             filters off the right edge instead of onto a second line. */}
-          <div className="max-w-[1120px] min-[1500px]:max-w-[1320px] mx-auto px-6 flex items-center gap-6 flex-wrap">
+          <div className="max-w-[1120px] min-[1300px]:max-w-[1320px] min-[1700px]:max-w-[1560px] min-[2000px]:max-w-[1760px] mx-auto px-6 flex items-center gap-6 max-[600px]:gap-y-0 flex-wrap">
             <a
               href="/"
               onClick={(e) => {
@@ -525,7 +598,7 @@ export default function App() {
             {/* The nav takes the slack instead of the filter group using ml-auto:
               that right-aligns the filters while they share the top row, but
               leaves them left-aligned with everything else once they wrap. */}
-            <nav className="flex gap-1 self-stretch min-[1081px]:flex-1">
+            <nav className="flex gap-1 self-stretch min-[1081px]:flex-1 max-[600px]:grid max-[600px]:grid-cols-4 max-[600px]:gap-0 max-[600px]:w-full">
               {navTab(
                 "Champions",
                 !onCommunityPage && (tab === "champions" || onChampionPage),
@@ -538,6 +611,10 @@ export default function App() {
                 if (onChampionPage || onCommunityPage) navigate("/");
                 setParam("tab", "augments");
               })}
+              {navTab("Compare", !onCommunityPage && tab === "compare" && !onChampionPage, () => {
+                if (onChampionPage || onCommunityPage) navigate("/");
+                setParam("tab", "compare");
+              })}
               {navTab("Community", onCommunityPage, () => {
                 if (!onCommunityPage) navigate("/community/");
               })}
@@ -546,22 +623,8 @@ export default function App() {
               series - neither takes a patch or a queue - so the filters sat
               there doing nothing. Hidden rather than disabled: a control that
               can't change anything shouldn't ask to be tried. */}
-            {!onCommunityPage && (
-              <div className="flex items-center gap-2 py-2 max-[1080px]:w-full max-[1080px]:pt-0 max-[1080px]:pb-2.5 max-[1080px]:flex-wrap">
-                <QueueSelect
-                  queues={queueOptions}
-                  value={selectedQueue}
-                  onChange={(q) =>
-                    // The default queue is the empty parameter, so choosing it
-                    // takes ?queue= back out of the URL rather than spelling
-                    // out what no parameter already means.
-                    setParam(
-                      "queue",
-                      q === undefined ? "all" : q === DEFAULT_QUEUE ? null : String(q),
-                    )
-                  }
-                  size="sm"
-                />
+            {!onCommunityPage && tab !== "compare" && (
+              <div className="flex items-center gap-2 py-2 max-[1080px]:w-full max-[1080px]:pt-1 max-[1080px]:pb-3 max-[1080px]:flex-wrap max-[600px]:[&>div]:w-full max-[600px]:[&_select:only-child]:!w-full">
                 <PatchRangeSelect
                   patches={patches}
                   selection={parsePatchParam(patchParam, patches)}
@@ -572,7 +635,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="max-w-[1120px] min-[1500px]:max-w-[1320px] mx-auto px-6 pt-7 pb-14">
+        <div className="max-w-[1120px] min-[1300px]:max-w-[1320px] min-[1700px]:max-w-[1560px] min-[2000px]:max-w-[1760px] mx-auto px-6 pt-7 pb-14">
           {error && (
             <div className="bg-lol-card border border-lol-loss/40 rounded-xl p-5 text-sm">
               <p className="text-lol-loss mb-2">Couldn't load community stats: {error}</p>
@@ -580,7 +643,7 @@ export default function App() {
             </div>
           )}
 
-          {autoWiden && !onCommunityPage && (
+          {autoWiden && !onCommunityPage && tab !== "compare" && (
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-lol-gold/25 bg-lol-gold/[0.06] px-4 py-3">
               <InfoIcon
                 width={15}
@@ -599,6 +662,31 @@ export default function App() {
                 {selectedChampion != null ? "on this champion" : "so far"}.
                 {!autoWiden.reached &&
                   ` Still thin at ${autoWiden.widened.toLocaleString()} - read as directional.`}
+              </p>
+            </div>
+          )}
+
+          {showWidenHint && autoWidenTo && !onCommunityPage && tab !== "compare" && (
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-lol-gold/25 bg-lol-gold/[0.06] px-4 py-3">
+              <InfoIcon
+                width={15}
+                height={15}
+                className="mt-[3px] shrink-0 text-lol-gold"
+                aria-hidden="true"
+              />
+              <p className="text-[13px] leading-relaxed text-lol-text">
+                {formatPatch(autoWidenTo.to)} has{" "}
+                {autoWidenTo.onLatest === 0
+                  ? "no games"
+                  : `only ${autoWidenTo.onLatest} game${autoWidenTo.onLatest === 1 ? "" : "s"}`}{" "}
+                {selectedChampion != null ? "on this champion" : "so far"}, so these numbers are
+                thin.{" "}
+                <button
+                  onClick={applyWiden}
+                  className="text-lol-gold hover:text-lol-gold-light underline underline-offset-2 cursor-pointer"
+                >
+                  Include {formatPatch(autoWidenTo.from)}–{formatPatch(autoWidenTo.to)}
+                </button>
               </p>
             </div>
           )}
@@ -654,19 +742,43 @@ export default function App() {
                   championData={data.championData}
                   augmentData={data.augmentData}
                   onBack={() => navigate("/")}
+                  onCompare={() => {
+                    navigate("/");
+                    setParam("tab", "compare");
+                    setParam("view", null);
+                    setParam("pin", String(selectedChampion));
+                  }}
                 />
               </>
             )}
 
-          {data && !onChampionPage && !onCommunityPage && (
+          {data &&
+            !onChampionPage &&
+            !onCommunityPage &&
+            tab === "compare" &&
+            patches.length > 0 && (
+              <ComparePage
+                patches={patches}
+                from={params.get("from") ?? patches[1] ?? patches[0]}
+                to={params.get("to") ?? patches[0]}
+                view={params.get("view") === "augments" ? "augments" : "champions"}
+                queue={queue}
+                championData={data.championData}
+                augmentData={data.augmentData}
+                pinned={pinned}
+                onChange={setParam}
+              />
+            )}
+
+          {data && !onChampionPage && !onCommunityPage && tab !== "compare" && (
             <>
               {/* Page title */}
-              <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
+              <div className="flex items-baseline gap-3 mb-4 flex-wrap">
                 <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">
-                  {queueLabel} {tab === "champions" ? "Champions" : "Augments"} Tier List
+                  {tab === "champions" ? "Champions" : "Augments"} Tier List
                 </h1>
                 <span className="text-xs">
-                  {patchLabel} · {totalGames.toLocaleString()} games
+                  {queueLabel} · {patchLabel} · {totalGames.toLocaleString()} games
                   {loadingMore && (
                     // A widened range fetches the patches it added. Saying so
                     // beats letting the count climb with no explanation.
@@ -674,14 +786,17 @@ export default function App() {
                   )}
                 </span>
               </div>
-              <p className="text-[13px] mb-4">
-                {tab === "champions"
-                  ? "Every champion ranked by score."
-                  : "Augments ranked within their rarity."}
-              </p>
 
               <AdSlot slot={AD_SLOTS.top} />
 
+              {tab === "augments" && failedAugments.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-lol-loss/40 bg-lol-card px-4 py-3 text-[13px]">
+                  <span className="text-lol-loss">
+                    Some augment numbers didn't load, so the counts below are incomplete.
+                  </span>
+                  <Button onClick={retryAugments}>Retry</Button>
+                </div>
+              )}
               {tab === "augments" ? (
                 <AugmentsTable
                   rows={data.augmentRows}
@@ -722,7 +837,7 @@ export default function App() {
                 }}
                 className="hover:text-lol-gold"
               >
-                Community impact
+                Community Impact
               </a>
               <a href="/privacy/" className="hover:text-lol-gold">
                 Privacy

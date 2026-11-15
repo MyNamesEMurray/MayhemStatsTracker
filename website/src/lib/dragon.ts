@@ -1,6 +1,7 @@
 // Champion and augment names/icons from the same public sources the desktop
 // app uses. Cached in localStorage for a day so repeat visits skip the fetch.
 
+import { isFinishedItem as isFinishedRawItem } from "../../../src/shared/items.ts";
 import {
   applyDescriptions,
   AUGMENT_DESCRIPTIONS_PATH,
@@ -9,6 +10,9 @@ import {
 
 export interface ChampionInfo {
   name: string;
+  // Riot's own classes from Data Dragon, primary first. A champion carries one
+  // or two of Fighter, Tank, Mage, Assassin, Support, Marksman.
+  tags: string[];
 }
 
 export interface AugmentInfo {
@@ -22,7 +26,6 @@ export type ChampionData = Record<number, ChampionInfo>;
 export type AugmentData = Record<number, AugmentInfo>;
 
 // Artwork URLs are shared with the desktop app
-export { AUGMENT_ICON_BASE, augmentIconUrl, CHAMPION_ICON_URL } from "../../../src/shared/cdn.ts";
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
@@ -46,22 +49,33 @@ function writeCache(key: string, data: unknown) {
   }
 }
 
+// An error page from the CDN is HTML, not JSON, and .json() on it throws a
+// parse error that says nothing about the real problem
+async function getJson(url: string): Promise<any> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function loadChampionData(): Promise<ChampionData> {
-  const cached = readCache<ChampionData>("champion-data");
+  const cached = readCache<ChampionData>("champion-data-v2");
   if (cached) return cached;
 
-  const versions = (await (
-    await fetch("https://ddragon.leagueoflegends.com/api/versions.json")
-  ).json()) as string[];
-  const data = await (
-    await fetch(`https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`)
-  ).json();
+  const versions = (await getJson(
+    "https://ddragon.leagueoflegends.com/api/versions.json",
+  )) as string[];
+  const data = await getJson(
+    `https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`,
+  );
 
   const out: ChampionData = {};
-  for (const champ of Object.values<any>(data.data)) {
-    out[parseInt(champ.key)] = { name: champ.name };
+  for (const champ of Object.values<any>(data.data ?? {})) {
+    out[parseInt(champ.key)] = { name: champ.name, tags: champ.tags ?? [] };
   }
-  writeCache("champion-data", out);
+  // Names are what every row and URL is built from; a list with none in it is a
+  // failed load and is not worth keeping for a day
+  if (Object.keys(out).length === 0) throw new Error("champion list was empty");
+  writeCache("champion-data-v2", out);
   return out;
 }
 
@@ -72,9 +86,12 @@ export async function loadAugmentData(): Promise<AugmentData> {
   // The list and the hover text come from different places and neither needs
   // the other, so they overlap. The text is ours, served from this origin.
   const [data, descriptions] = await Promise.all([
-    fetch(
+    getJson(
       "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments.json",
-    ).then((r) => r.json()),
+    )
+      // The stats are already in hand: without names the augments read "Augment
+      // 123" until the next visit, which beats an error page over a CDN blip
+      .catch(() => null),
     fetch(AUGMENT_DESCRIPTIONS_PATH)
       .then((r) => r.json())
       .then((raw) => parseDescriptions(raw)?.descriptions ?? null)
@@ -95,7 +112,9 @@ export async function loadAugmentData(): Promise<AugmentData> {
     }
   }
   if (descriptions) applyDescriptions(out, descriptions);
-  writeCache("augment-data", out);
+  // Kept for a day only when it is a real list: a failed or empty answer would
+  // otherwise leave every augment unnamed in this browser until tomorrow
+  if (Object.keys(out).length > 0) writeCache("augment-data", out);
   return out;
 }
 
@@ -119,8 +138,6 @@ export interface ItemInfo {
 
 export type ItemData = Record<number, ItemInfo>;
 
-export { itemIconUrl } from "../../../src/shared/cdn.ts";
-
 // items.json is a few MB, so it's loaded only when a champion detail view
 // needs it, reduced to id → {name, icon}, and cached like the others.
 let itemPromise: Promise<ItemData> | null = null;
@@ -131,31 +148,14 @@ export function loadItemData(): Promise<ItemData> {
     const cached = readCache<ItemData>("item-data-v4");
     if (cached) return cached;
 
-    const data = await (
-      await fetch(
-        "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items.json",
-      )
-    ).json();
+    const data = await getJson(
+      "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items.json",
+    );
 
     const out: ItemData = {};
     if (Array.isArray(data)) {
       for (const item of data) {
-        const buildsInto = Array.isArray(item.to) ? item.to.length : 0;
-        const categories: string[] = Array.isArray(item.categories) ? item.categories : [];
-        const price: number = item.priceTotal ?? 0;
-        // Mode-specific prismatics (six-digit ids) count regardless of price.
-        // Tier-2 boots upgrade into tier-3, so they build into something while
-        // still being a real build step - include them by price instead.
-        const builtFrom = Array.isArray(item.from) ? item.from.length : 0;
-        // Tier-2 boots upgrade into tier-3, so they build into something while
-        // still being a real purchase. What separates them from the 300g
-        // Boots everyone starts with is that they are built *from* it -
-        // price alone dropped Ionian Boots of Lucidity, at 900g, off the list.
-        const completed =
-          (buildsInto === 0 &&
-            !categories.includes("Consumable") &&
-            (price >= 500 || item.id >= 100000)) ||
-          (categories.includes("Boots") && builtFrom > 0);
+        const completed = isFinishedRawItem(item);
         out[item.id] = {
           name: item.name || `Item ${item.id}`,
           iconPath: item.iconPath || "",
@@ -163,7 +163,7 @@ export function loadItemData(): Promise<ItemData> {
         };
       }
     }
-    writeCache("item-data-v4", out);
+    if (Object.keys(out).length > 0) writeCache("item-data-v4", out);
     return out;
   })();
   itemPromise.catch(() => {

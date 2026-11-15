@@ -73,6 +73,7 @@ export default function ChampionDetail({
   championData,
   augmentData,
   onBack,
+  onCompare,
   onSelectChampion,
 }: {
   championId: number;
@@ -86,6 +87,8 @@ export default function ChampionDetail({
   championData: ChampionData;
   augmentData: AugmentData;
   onBack: () => void;
+  // Opens the Compare tab with this champion pinned at the top
+  onCompare: () => void;
   onSelectChampion?: (championId: number) => void;
 }) {
   const [itemData, setItemData] = useState<ItemData>({});
@@ -94,7 +97,16 @@ export default function ChampionDetail({
   const [augSearch, setAugSearch] = useState("");
   const [augRarity, setAugRarity] = useState<Rarity>("all");
   useEffect(() => {
-    loadItemData().then(setItemData);
+    let active = true;
+    loadItemData()
+      .then((d) => {
+        if (active) setItemData(d);
+      })
+      // No item names is a degraded page, not a crashed one
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   // The champion's aggregate line plus its tier within the full cohort
@@ -219,14 +231,26 @@ export default function ChampionDetail({
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-sm text-lol-gold hover:text-lol-gold-light">
-        ← All champions
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={onBack}
+          className="text-sm text-lol-gold hover:text-lol-gold-light whitespace-nowrap"
+        >
+          ← All champions
+        </button>
+        <button
+          onClick={onCompare}
+          className="text-sm text-lol-gold hover:text-lol-gold-light whitespace-nowrap"
+        >
+          <span className="max-[420px]:hidden">Compare across patches</span>
+          <span className="min-[421px]:hidden">Compare patches</span> →
+        </button>
+      </div>
 
       {/* Hero */}
       <div className={`${PANEL} p-5`}>
         <div className="flex flex-wrap items-center gap-4">
-          <span className="rounded-full ring-2 ring-lol-gold/40 shrink-0 leading-none">
+          <span className="rounded-[14px] ring-2 ring-lol-gold/40 shrink-0 leading-none">
             <ChampionIcon championId={championId} size={64} />
           </span>
           <div className="min-w-0">

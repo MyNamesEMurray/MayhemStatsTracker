@@ -16,7 +16,9 @@ export default function ChampionIcon({
       width={size}
       height={size}
       loading="lazy"
-      className={`rounded-full shrink-0 ${className}`}
+      // The art is a square; a circle crops its corners and shows the edge
+      className={`shrink-0 ${className}`}
+      style={{ borderRadius: Math.round(size * 0.22) }}
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = "none";
       }}

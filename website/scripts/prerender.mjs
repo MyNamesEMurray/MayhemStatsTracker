@@ -11,32 +11,57 @@
 //   * no line is printed from a sample too small to mean anything, so the
 //     page never claims "100% win rate over 1 pick".
 //
-// Deliberately fails soft: if the data APIs are unreachable at build time,
-// the site still deploys as a plain SPA.
+// Fails soft locally: if the data APIs are unreachable at build time, a local
+// build still produces a plain SPA. On the real deploy build and in CI it fails
+// instead (see the end of this file).
 import { execFileSync } from "child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+// Run with --experimental-strip-types (see package.json) so these shared
+// TypeScript modules load without a build step
+import { isFinishedItem } from "../../src/shared/items.ts";
+import { comparePatches, formatPatch } from "../../src/shared/patch.ts";
+import { QUEUE_ID_MAYHEM } from "../../src/shared/queues.ts";
+import { rankForBuild, score } from "../../src/shared/score.ts";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../src/shared/supabase.ts";
+import {
+  aggregate,
+  INDEX_MIN_GAMES,
+  isIndexable,
+  pickRatePct,
+  relative,
+  winRateRange,
+} from "../src/lib/championSummary.ts";
+import { championSlug } from "../src/lib/slug.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, "../dist");
 const SITE = "https://mayhemstats.com";
 
-const SUPABASE_URL = "https://lmzenzxbhotszvwsnhlm.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtemVuenhiaG90c3p2d3NuaGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyMjU0NDcsImV4cCI6MjEwMTgwMTQ0N30.7FoFD7LFaV5Yin4OnjYjECAYZPa2I9xc6oQa4xPAKpA";
-
-// A champion page is only worth putting in front of search users once the
-// win rate on it carries a readable confidence interval. Twenty games is
-// the same floor the app uses to stop muting win rates (src/lib/stats.ts).
-const INDEX_MIN_GAMES = 20;
 // Nothing gets printed as a recommendation from fewer picks than this.
 const ITEM_MIN_PICKS = 3;
 const AUGMENT_MIN_PICKS = 3;
 
 const PROXY = process.env.HTTPS_PROXY || process.env.https_proxy;
 
+// Real deploy builds and CI fail on any prerender error; local builds do not
+const STRICT = process.env.WORKERS_CI || process.env.CF_PAGES || process.env.PRERENDER_STRICT;
+
+// A page is one of dozens of requests, so a single 5xx or dropped connection is
+// likely on a busy build and would fail it. Three tries, a pause between.
 async function fetchJson(url, headers = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchJsonOnce(url, headers);
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
+
+async function fetchJsonOnce(url, headers) {
   if (PROXY) {
     // Sandboxed/dev environments route HTTPS through a proxy that node's
     // fetch ignores; curl handles it
@@ -58,12 +83,18 @@ async function fetchJson(url, headers = {}) {
 // `order` names a unique key of the view, which the rollups are indexed on.
 const PAGE_BATCH = 8;
 
+// ARAM Mayhem only. Mayhem Classic games sit in the same views with their own
+// near-disjoint item pool, and a page headed "ARAM Mayhem" must not quote them;
+// the live site defaults to the same queue.
 function fetchPageRows(view, order, from) {
-  return fetchJson(`${SUPABASE_URL}/rest/v1/${view}?select=*&order=${order}`, {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    Range: `${from}-${from + 999}`,
-  });
+  return fetchJson(
+    `${SUPABASE_URL}/rest/v1/${view}?select=*&queue_id=eq.${QUEUE_ID_MAYHEM}&order=${order}`,
+    {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Range: `${from}-${from + 999}`,
+    },
+  );
 }
 
 async function fetchAllRows(view, order) {
@@ -80,35 +111,6 @@ async function fetchAllRows(view, order) {
   }
 }
 
-// Mirrors src/lib/slug.ts - keep in sync
-const championSlug = (name) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-// Mirrors src/lib/stats.ts score(): the win rate a record supports, out of
-// 100 - the floor of a 95% Wilson interval. Everything ranks by it, so a 5-0
-// item lands below a 60% one with hundreds of games.
-const score = (wins, games) => {
-  if (games <= 0) return 0;
-  const p = wins / games;
-  const z = 1.96;
-  const z2 = z * z;
-  const centre = p + z2 / (2 * games);
-  const margin = z * Math.sqrt((p * (1 - p) + z2 / (4 * games)) / games);
-  return (100 * (centre - margin)) / (1 + z2 / games);
-};
-
-// Mirrors src/lib/stats.ts formatPatch(): stored patches are year-based
-// ("26.16"); shifting stray client-style values ("16.16") is idempotent
-const formatPatch = (patch) => {
-  const m = patch.match(/^(\d+)\.(.+)$/);
-  if (!m) return patch;
-  const major = Number(m[1]);
-  return major >= 15 && major < 25 ? `${major + 10}.${m[2]}` : patch;
-};
-
 const esc = (s) =>
   String(s)
     .replace(/&/g, "&amp;")
@@ -119,48 +121,6 @@ const esc = (s) =>
 const pct = (wins, n) => (n > 0 ? ((wins / n) * 100).toFixed(1) : "0.0");
 const num = (n) => Math.round(n).toLocaleString();
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
-// Half-width of the 95% normal-approximation interval on a win rate, in
-// points. Printed so a reader can see how much of a number is noise.
-const marginOfError = (wins, games) => {
-  const p = wins / games;
-  return 100 * 1.96 * Math.sqrt((p * (1 - p)) / games);
-};
-
-// "18% above" / "in line with" / "12% below", for comparing a champion's
-// per-game averages against the whole database
-function relative(value, base) {
-  if (!base) return "in line with the mode average";
-  const diff = ((value - base) / base) * 100;
-  if (Math.abs(diff) < 8) return "in line with the mode average";
-  return `${Math.round(Math.abs(diff))}% ${diff > 0 ? "above" : "below"} the mode average`;
-}
-
-// Mirrors src/lib/stats.ts rankForBuild: a workable sample AND a record that
-// isn't losing, ranked by confidence score. An item that has never won is not a
-// recommendation, however many times it was built.
-function rankForBuild(list, minPicks, count) {
-  return list
-    .filter((x) => x.picks >= minPicks && x.wins * 2 >= x.picks)
-    .sort((a, b) => score(b.wins, b.picks) - score(a.wins, a.picks))
-    .slice(0, count);
-}
-
-function aggregate(rows, keyField, extra = []) {
-  const map = new Map();
-  for (const r of rows) {
-    let e = map.get(r[keyField]);
-    if (!e) {
-      e = { key: r[keyField], picks: 0, wins: 0 };
-      for (const f of extra) e[f] = 0;
-      map.set(r[keyField], e);
-    }
-    e.picks += r.picks ?? r.games;
-    e.wins += r.wins;
-    for (const f of extra) e[f] += r[f] ?? 0;
-  }
-  return Array.from(map.values());
-}
 
 // Colours come from the built stylesheet's :root tokens, which every
 // prerendered page links before any JavaScript runs.
@@ -204,22 +164,13 @@ async function main() {
     }
   }
   const itemNames = {};
-  // Mirrors src/lib/dragon.ts: components are what a finished item was on the
-  // way to, so they stay out of the build lists. Manamune and Archangel's
-  // Staff transform rather than build into anything, so they stay in.
+  // Components stay out of the build lists; the rule is shared with the site
+  // and the app in src/shared/items.ts.
   const itemFinished = {};
   if (Array.isArray(itemsJson))
     for (const it of itemsJson) {
       itemNames[it.id] = it.name || "";
-      const buildsInto = Array.isArray(it.to) ? it.to.length : 0;
-      const builtFrom = Array.isArray(it.from) ? it.from.length : 0;
-      const categories = Array.isArray(it.categories) ? it.categories : [];
-      const price = it.priceTotal ?? 0;
-      itemFinished[it.id] =
-        (buildsInto === 0 &&
-          !categories.includes("Consumable") &&
-          (price >= 500 || it.id >= 100000)) ||
-        (categories.includes("Boots") && builtFrom > 0);
+      itemFinished[it.id] = isFinishedItem(it);
     }
 
   const augmentName = (id) => augments[id]?.name || "";
@@ -236,11 +187,7 @@ async function main() {
     .join("\n    ");
 
   const patches = [...new Set(championRows.map((r) => r.patch))];
-  const latestPatch = patches.sort((a, b) => {
-    const [am, an] = a.split(".").map(Number);
-    const [bm, bn] = b.split(".").map(Number);
-    return bm - am || bn - an;
-  })[0];
+  const latestPatch = patches.sort((a, b) => comparePatches(b, a))[0];
   const buildDate = new Date().toISOString().slice(0, 10);
 
   const perChampion = new Map();
@@ -268,7 +215,6 @@ async function main() {
   const modeAvg = {};
   for (const f of STAT_FIELDS) modeAvg[f] = modeTotals.games ? modeTotals[f] / modeTotals.games : 0;
   // Ten champion slots per match
-  const totalMatches = Math.round(modeTotals.games / 10);
 
   // Champions with enough games to lead cross-links
   const topChamps = [...perChampion.entries()]
@@ -294,7 +240,7 @@ async function main() {
     const name = championNames[id];
     if (!name || agg.games < 1) continue;
     const slug = championSlug(name);
-    const indexable = agg.games >= INDEX_MIN_GAMES;
+    const indexable = isIndexable(agg.games);
 
     const champAugments = aggregate(
       augmentRows.filter((r) => r.champion_id === id),
@@ -304,20 +250,28 @@ async function main() {
       itemRows.filter((r) => r.champion_id === id),
       "item_id",
     ).filter((i) => itemName(i.key) && itemFinished[i.key]);
-    const coreBuild = rankForBuild(champItems, ITEM_MIN_PICKS, 6);
+    const coreBuild = rankForBuild(
+      champItems,
+      (x) => x.picks,
+      (x) => x.wins,
+      ITEM_MIN_PICKS,
+      6,
+    );
     const byRarity = (rarity) =>
       rankForBuild(
         champAugments.filter((a) => augments[a.key]?.rarity === rarity),
+        (x) => x.picks,
+        (x) => x.wins,
         AUGMENT_MIN_PICKS,
         4,
       );
 
     const wr = pct(agg.wins, agg.games);
     const kda = ((agg.kills + agg.assists) / Math.max(agg.deaths, 1)).toFixed(2);
-    const moe = marginOfError(agg.wins, agg.games).toFixed(1);
+    const range = winRateRange(agg.wins, agg.games);
     const perGame = {};
     for (const f of STAT_FIELDS) perGame[f] = agg[f] / agg.games;
-    const pickRate = totalMatches ? (agg.games / totalMatches) * 100 : 0;
+    const pickRate = pickRatePct(agg.games, modeTotals.games);
 
     const title = `${name} Build - ARAM Mayhem Augments, Items & Win Rate | MayhemStats`;
     const description = indexable
@@ -384,7 +338,7 @@ async function main() {
       .join("\n        ");
 
     const confidence = indexable
-      ? `Over ${plural(agg.games, "game")} that win rate carries a 95% margin of error of roughly ±${moe} points, so read it as a range (${(Number(wr) - Number(moe)).toFixed(1)}–${(Number(wr) + Number(moe)).toFixed(1)}%) rather than a fixed number.`
+      ? `Over ${plural(agg.games, "game")} that win rate sits in a 95% confidence range of ${range.low.toFixed(1)}–${range.high.toFixed(1)}%, so read it as a range rather than a fixed number.`
       : `That is only ${plural(agg.games, "game")} - far too few to call a win rate. The numbers below are here for completeness, this page is kept out of search until the sample is worth reading, and the fastest way to fix that is more contributors: <a href="/download/">run the tracker</a> and opt in.`;
 
     const html = `<!doctype html>
@@ -414,7 +368,7 @@ ${PAGE_STYLE}
     <section id="prerender">
       <p><a href="/">← MayhemStats: all champions</a></p>
       <h1><img src="${iconUrl}" alt="" width="40" height="40" loading="lazy" />${esc(name)} - ARAM Mayhem Build &amp; Stats</h1>
-      <p>${esc(name)} wins <strong>${wr}%</strong> of ${plural(agg.games, "community game")} in ARAM Mayhem, with an average KDA of ${kda}${pickRate >= 1 ? `, appearing in ${pickRate.toFixed(1)}% of tracked matches` : ""}. All numbers come from anonymized games contributed by players running the free <a href="/download/">MayhemStats Tracker</a> app - never from ARAM or Arena stand-ins.</p>
+      <p>${esc(name)} wins <strong>${wr}%</strong> of ${plural(agg.games, "community game")} in ARAM Mayhem, with an average KDA of ${kda}${pickRate >= 0.1 ? ` and a ${pickRate.toFixed(1)}% pick rate` : ""}. All numbers come from anonymized games contributed by players running the free <a href="/download/">MayhemStats Tracker</a> app - never from ARAM or Arena stand-ins.</p>
       <p class="note">${confidence}</p>
       <h2>How ${esc(name)} plays in Mayhem</h2>
       <p>Per game, ${esc(name)}:</p>
@@ -504,7 +458,7 @@ ${PAGE_STYLE}
     <div id="root"></div>
     <section id="prerender">
       <p><a href="/">← MayhemStats</a></p>
-      <h1>Community impact</h1>
+      <h1>Community Impact</h1>
       <p>Riot's public API doesn't expose ARAM Mayhem match data, so every number on this site is crowdsourced: players run the free <a href="/download/">MayhemStats Tracker</a>, opt in, and pool their games anonymously.</p>
       <h2>The running total</h2>
       <ul>
@@ -525,9 +479,11 @@ ${PAGE_STYLE}
     writeFileSync(path.join(DIST, "community", "index.html"), communityHtml);
     sitemapUrls.push({ loc: `${SITE}/community/`, freq: "daily", pri: "0.6" });
   } catch (err) {
-    // Fail soft like the rest of this script: without a file the SPA route
-    // still works, it just stays out of the sitemap rather than being
-    // submitted as a duplicate of the homepage.
+    // On a real build this fails the deploy like the rest: without the file
+    // /community/ is served by the app shell with the homepage's canonical tag,
+    // which reads to Google as a duplicate. Locally it is skipped, and stays
+    // out of the sitemap rather than being submitted.
+    if (STRICT) throw err;
     console.warn(`prerender: community page skipped (${err.message})`);
   }
 
@@ -553,5 +509,15 @@ ${sitemapUrls
 }
 
 main().catch((err) => {
-  console.warn(`prerender skipped: ${err.message} - deploying as plain SPA`);
+  // On the real build, a failure has to stop the deploy: shipping without the
+  // champion pages sends those URLs to the SPA fallback, which carries the
+  // homepage's canonical tag and reads to Google as a duplicate. A failed
+  // build leaves the last good version live. Local builds stay soft so a flaky
+  // network does not block them; CI sets PRERENDER_STRICT, and Workers Builds
+  // sets WORKERS_CI.
+  const real = STRICT;
+  console[real ? "error" : "warn"](
+    `prerender ${real ? "FAILED" : "skipped"}: ${err.message}${real ? "" : " - deploying as plain SPA"}`,
+  );
+  if (real) process.exitCode = 1;
 });

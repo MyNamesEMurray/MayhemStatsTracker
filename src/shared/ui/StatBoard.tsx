@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { PANEL } from "./primitives";
 import SortHeader, { type SortDir, type SortState } from "./SortHeader";
 import SortControl, { type SortOption } from "./SortControl";
@@ -30,6 +30,10 @@ export default function StatBoard<Row, K extends string>({
   onSort,
   empty,
   minWidth = 1000,
+  sticky,
+  fitsFrom = "lg",
+  topScroll,
+  pinnedRows,
   renderAfterRow,
   footnote,
   rowClass,
@@ -44,18 +48,97 @@ export default function StatBoard<Row, K extends string>({
   // What the table needs before it is worth scrolling sideways instead of
   // squeezing. Under it the panel scrolls; under 700px the cards take over.
   minWidth?: number;
+  // Freeze the header row under the site's own frozen header while the page
+  // scrolls. Off by default: the desktop app lays its boards out differently.
+  sticky?: "page";
+  // The window width from which the table fits without scrolling sideways, so
+  // the panel can clip instead of scroll and the header can stick to the page.
+  // Narrower, it scrolls sideways and the header does not freeze.
+  fitsFrom?: "lg" | "xl";
+  // A second horizontal scrollbar above the table, shown only while the table
+  // is actually scrolling sideways, so it need not be found 50 rows down.
+  topScroll?: boolean;
+  // Rows held at the top, frozen under the header with it. They are drawn
+  // outside `rows`, so the caller leaves them out of that list. Index -1 is
+  // what their cells' render() gets, since they have no rank.
+  pinnedRows?: Row[];
   // An expanded row's contents, drawn as a full-width row underneath
   renderAfterRow?: (row: Row) => ReactNode;
   footnote?: ReactNode;
   rowClass?: (row: Row) => string;
 }) {
+  const mainRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  // Width of the scrolling content while the panel scrolls sideways, else 0
+  const [overflowW, setOverflowW] = useState(0);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!topScroll || !el) return;
+    const measure = () => {
+      const scrolls = ["auto", "scroll"].includes(getComputedStyle(el).overflowX);
+      setOverflowW(scrolls && el.scrollWidth > el.clientWidth + 1 ? el.scrollWidth : 0);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [topScroll, rows.length, columns.length]);
+  // Either bar moves the other; setting a value it already has fires no event,
+  // so the two cannot ping-pong
+  const follow = (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
+    if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
+  };
+
+  const cells = (row: Row, i: number) =>
+    columns.map((c, ci) => (
+      <td
+        key={ci}
+        // The card layout reads these two rather than counting columns. The
+        // CSS it replaced keyed off nth-child, so inserting a column silently
+        // relabelled every figure after it.
+        data-area={c.area ?? "stat"}
+        data-label={(c.area ?? "stat") === "stat" ? (c.cardLabel ?? c.label) : undefined}
+        className={`px-3 py-[9px] ${c.cellClass ?? ""} ${c.detail ? "board-detail" : ""} ${
+          c.align === "right" ? "min-[701px]:text-right" : ""
+        }`}
+      >
+        {c.render(row, i)}
+      </td>
+    ));
+
   const hasRank = columns.some((c) => c.area === "rank");
   const sortProps = { sort, onSort, thClass: TH };
 
   return (
     <>
-      <div className={`${PANEL} overflow-x-auto`}>
+      {topScroll && overflowW > 0 && (
+        <div
+          ref={topRef}
+          onScroll={() => follow(topRef.current, mainRef.current)}
+          aria-hidden="true"
+          className={`overflow-x-auto overflow-y-hidden min-h-[14px] ${
+            sticky === "page" ? "sticky z-10 top-[calc(var(--site-header-h,0px)-1px)]" : ""
+          }`}
+        >
+          <div style={{ width: overflowW, height: 1 }} />
+        </div>
+      )}
+      <div
+        ref={mainRef}
+        onScroll={() => follow(mainRef.current, topRef.current)}
+        className={`${PANEL} ${
+          sticky === "page"
+            ? // Clipping instead of scrolling is what lets the header stick to
+              // the page, so it only applies once the table fits unscrolled
+              fitsFrom === "xl"
+              ? "overflow-x-auto min-[1700px]:overflow-x-clip"
+              : "overflow-x-auto min-[1100px]:overflow-x-clip"
+            : "overflow-x-auto"
+        }`}
+      >
         <table
+          data-sticky={sticky}
           className="stat-board table-fixed w-full border-collapse"
           style={{ minWidth: `${minWidth}px` }}
           data-rank={hasRank ? "yes" : "no"}
@@ -75,18 +158,44 @@ export default function StatBoard<Row, K extends string>({
                 ) : (
                   <SortHeader
                     key={i}
-                    label={c.label}
+                    label={
+                      c.shortLabel ? (
+                        <>
+                          <span className="max-[1199px]:hidden">{c.label}</span>
+                          <span className="min-[1200px]:hidden">{c.shortLabel}</span>
+                        </>
+                      ) : (
+                        c.label
+                      )
+                    }
                     field={c.key}
                     naturalDir={c.naturalDir}
                     title={c.headerTitle}
                     className={`${c.width ?? ""} ${c.detail ? "board-detail" : ""}`}
+                    align={c.align}
                     {...sortProps}
                   />
                 ),
               )}
             </tr>
+            {/* Pinned rows live in the header so they freeze with it. The
+                header is hidden in the card layout, so the tbody carries a copy
+                that only shows there. */}
+            {pinnedRows?.map((row) => (
+              <tr key={`pin-${rowKey(row)}`} className="board-pinned">
+                {cells(row, -1)}
+              </tr>
+            ))}
           </thead>
           <tbody>
+            {pinnedRows?.map((row) => (
+              <tr
+                key={`pincard-${rowKey(row)}`}
+                className="board-pinned-card group border-t border-lol-border/50"
+              >
+                {cells(row, -1)}
+              </tr>
+            ))}
             {rows.map((row, i) => (
               <Fragment key={rowKey(row)}>
                 <tr
@@ -95,24 +204,7 @@ export default function StatBoard<Row, K extends string>({
                     onRowClick ? "hover:bg-lol-card-hover cursor-pointer" : ""
                   } ${rowClass?.(row) ?? ""}`}
                 >
-                  {columns.map((c, ci) => (
-                    <td
-                      key={ci}
-                      // The card layout reads these two rather than counting
-                      // columns. The CSS it replaced keyed off nth-child, so
-                      // inserting a column silently relabelled every figure
-                      // after it.
-                      data-area={c.area ?? "stat"}
-                      data-label={
-                        (c.area ?? "stat") === "stat" ? (c.cardLabel ?? c.label) : undefined
-                      }
-                      className={`px-3 py-[9px] ${c.cellClass ?? ""} ${
-                        c.detail ? "board-detail" : ""
-                      }`}
-                    >
-                      {c.render(row, i)}
-                    </td>
-                  ))}
+                  {cells(row, i)}
                 </tr>
                 {renderAfterRow?.(row)}
               </Fragment>

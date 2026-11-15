@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useSort, type SortDir, type SortState } from "./sortState";
 
 // The sortable column header itself. The state it drives lives in
@@ -19,8 +20,9 @@ export default function SortHeader<K extends string>({
   title,
   thClass = TH_BASE,
   compact = false,
+  align,
 }: {
-  label: string;
+  label: ReactNode;
   field: K;
   sort: SortState<K>;
   onSort: (key: K, naturalDir?: SortDir) => void;
@@ -36,13 +38,15 @@ export default function SortHeader<K extends string>({
   // panels give Score 44px on a phone, and holding space for an arrow there
   // pushed the neighbouring headers out of their cells.
   compact?: boolean;
+  // Right-align the label and arrow over right-aligned figures
+  align?: "right";
 }) {
   const active = sort.key === field;
   return (
     <th
       // Screen readers announce the sort state from the header itself
       aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-      className={`${thClass} ${active ? "text-lol-gold" : "text-lol-text"} ${className ?? ""}`}
+      className={`${thClass} ${active ? "text-lol-gold" : "text-lol-text"} ${className ?? ""} ${align === "right" ? "!text-right" : ""}`}
       title={title}
     >
       {/* A button rather than a click handler on the th: sorting a table has
@@ -50,7 +54,7 @@ export default function SortHeader<K extends string>({
       <button
         type="button"
         onClick={() => onSort(field, naturalDir)}
-        className={`flex items-center gap-1 w-full text-left uppercase tracking-[.08em] cursor-pointer ${
+        className={`flex items-center gap-1 w-full ${align === "right" ? "justify-end text-right" : "text-left"} uppercase tracking-[.08em] cursor-pointer ${
           compact ? "min-w-0 overflow-hidden" : "whitespace-nowrap"
         } ${active ? "text-lol-gold" : "hover:text-lol-gold"}`}
       >

@@ -25,15 +25,9 @@ import { score } from "../../../src/shared/score.ts";
 import { comparePatches } from "../../../src/shared/patch.ts";
 import { KDA_RAMP, rampClass } from "../../../src/shared/format.ts";
 
-export { MAYHEM_QUEUE_IDS, QUEUE_LABELS } from "../../../src/shared/queues.ts";
+export { QUEUE_LABELS } from "../../../src/shared/queues.ts";
 export { comparePatches };
-export {
-  formatPatch,
-  parsePatchParam,
-  patchesIn,
-  patchParam,
-  patchRange,
-} from "../../../src/shared/patch.ts";
+export { formatPatch, parsePatchParam, patchesIn, patchParam } from "../../../src/shared/patch.ts";
 export type { PatchSelection } from "../../../src/shared/patch.ts";
 export { formatWhole, kdaRatio } from "../../../src/shared/format.ts";
 
@@ -50,12 +44,6 @@ export function rowMatches(row: { patch: string; queue_id: number }, f: Filters)
   if (f.patches && !f.patches.has(row.patch)) return false;
   if (f.queue != null && row.queue_id !== f.queue) return false;
   return true;
-}
-
-// Patches present in the data, newest first
-export function availablePatches(rows: ChampionStatRow[]): string[] {
-  const set = new Set(rows.map((r) => r.patch));
-  return Array.from(set).sort((a, b) => comparePatches(b, a));
 }
 
 export function availableQueues(rows: ChampionStatRow[]): number[] {

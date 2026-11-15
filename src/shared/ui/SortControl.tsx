@@ -20,7 +20,7 @@ export default function SortControl<K extends string>({
     <div className="sort-mobile items-center gap-2 w-full">
       <span className="text-xs text-lol-text shrink-0">Sort</span>
       <select
-        className="select select-sm select-flex"
+        className="select select-sm select-flex !max-w-none"
         value={sort.key}
         aria-label="Sort by"
         onChange={(e) => {

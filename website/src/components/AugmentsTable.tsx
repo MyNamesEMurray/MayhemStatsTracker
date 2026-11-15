@@ -117,18 +117,15 @@ export default function AugmentsTable({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <RarityFilter value={rarity} onChange={setRarity} />
-        <span className="text-xs self-center ml-1">
+        <span className="text-xs tabular-nums min-w-[6rem] max-[700px]:w-full">
           {sorted.length} augment{sorted.length === 1 ? "" : "s"}
         </span>
+        <div className="grid grid-cols-4 gap-1.5 w-full max-[700px]:[&>button]:px-1 max-[700px]:[&>button]:text-center min-[701px]:flex min-[701px]:flex-wrap min-[701px]:w-auto min-[701px]:items-center">
+          <RarityFilter value={rarity} onChange={setRarity} />
+        </div>
         <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
-        <div className="ml-auto">
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search augment..."
-            width={192}
-          />
+        <div className="ml-auto w-48 max-[700px]:ml-0 max-[700px]:w-full">
+          <SearchField value={search} onChange={setSearch} placeholder="Search augment..." />
         </div>
       </div>
 
@@ -153,6 +150,8 @@ export default function AugmentsTable({
             />
           ) : null
         }
+        sticky="page"
+        topScroll
         footnote={
           <>
             Score is the win rate the record supports, out of 100 - the floor of a 95% confidence
@@ -203,13 +202,16 @@ function AugmentExpansion({
   }, [augmentId, patchKey]);
   useEffect(() => {
     let active = true;
-    fetchAugmentPairs(augmentId).then((r) => {
+    fetchAugmentPairs(
+      augmentId,
+      patchKey == null ? undefined : patchKey.split(",").filter(Boolean),
+    ).then((r) => {
       if (active) setPairs(r);
     });
     return () => {
       active = false;
     };
-  }, [augmentId]);
+  }, [augmentId, patchKey]);
 
   const breakdown = useMemo(
     () => (rows ? augmentChampionBreakdown(rows, filters, augmentId).slice(0, 9) : []),

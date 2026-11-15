@@ -1,6 +1,5 @@
-// Champion page slugs: "Miss Fortune" -> "miss-fortune", "Kai'Sa" -> "kaisa",
-// "Nunu & Willump" -> "nunu-willump". scripts/prerender.mjs mirrors this -
-// keep the two in sync.
+// Champion page slugs: "Miss Fortune" -> "miss-fortune", "Kai'Sa" -> "kai-sa",
+// "Nunu & Willump" -> "nunu-willump". scripts/prerender.mjs imports this.
 export function championSlug(name: string): string {
   return name
     .toLowerCase()

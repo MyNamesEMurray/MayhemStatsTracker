@@ -61,29 +61,25 @@ describe("the item icon fallback chain", () => {
     assert.equal(stripIconVariant(""), null);
   });
 
-  test("a variant path is tried exactly, then stripped, then the legacy mirror", () => {
-    const sources = itemIconSources(3153, "assets/items/3153_Blade.project_jade.png", "16.14");
-    assert.equal(sources.length, 3);
+  test("a variant path is tried exactly, then stripped", () => {
+    const sources = itemIconSources("assets/items/3153_Blade.project_jade.png", "16.14");
+    assert.equal(sources.length, 2);
     assert.ok(sources[0].includes("project_jade"), sources[0]);
     assert.ok(!sources[1].includes("project_jade"), sources[1]);
-    assert.ok(sources[2].includes("league-of-data-base"), sources[2]);
-    for (const s of sources.slice(0, 2)) assert.ok(s.includes("/16.14/"), s);
+    for (const s of sources) assert.ok(s.includes("/16.14/"), s);
   });
 
   test("a plain path skips the stripped step", () => {
-    const sources = itemIconSources(3153, "assets/items/3153_Blade.png");
-    assert.equal(sources.length, 2);
+    const sources = itemIconSources("assets/items/3153_Blade.png");
+    assert.equal(sources.length, 1);
   });
 
-  test("an item with no known icon still gets the legacy mirror to try", () => {
-    const sources = itemIconSources(3153);
-    assert.deepEqual(sources, [
-      "https://www.league-of-data-base.com/upload/16.4.1/item_img/3153.png",
-    ]);
+  test("an item with no known icon has nothing to try, so the placeholder shows", () => {
+    assert.deepEqual(itemIconSources(), []);
   });
 
   test("every candidate is a URL, in best-first order, with no duplicates", () => {
-    const sources = itemIconSources(3153, "assets/items/3153_Blade.project_jade.png");
+    const sources = itemIconSources("assets/items/3153_Blade.project_jade.png");
     for (const s of sources) assert.ok(s.startsWith("https://"), s);
     assert.equal(new Set(sources).size, sources.length);
   });

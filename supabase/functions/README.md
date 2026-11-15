@@ -19,7 +19,7 @@ select round(percentile_cont(0.9999) within group (order by v)::numeric, 1) as p
           from match_participants p join matches m using (platform, game_id)) x;
 ```
 
-| `review` | Approve/deny quarantined games - one at a time from a digest email link, or in bulk from the review queue page. |
+| `review` | Approve/deny quarantined games in bulk from the review queue page. |
 | `quarantine-digest` | Every 6 hours, emails a summary of what's pending with a link to the review queue - only when something new has arrived. |
 | `delete-contributions` | Erases one contributor token's games on request. |
 

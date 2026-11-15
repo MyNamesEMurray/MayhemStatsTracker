@@ -663,7 +663,7 @@ export default function App() {
           {data && !onChampionPage && !onCommunityPage && tab !== "compare" && (
             <>
               {/* Page title */}
-              <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
+              <div className="flex items-baseline gap-3 mb-4 flex-wrap">
                 <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">
                   {tab === "champions" ? "Champions" : "Augments"} Tier List
                 </h1>
@@ -676,11 +676,6 @@ export default function App() {
                   )}
                 </span>
               </div>
-              <p className="text-[13px] mb-4">
-                {tab === "champions"
-                  ? "Every champion ranked by score."
-                  : "Augments ranked within their rarity."}
-              </p>
 
               <AdSlot slot={AD_SLOTS.top} />
 

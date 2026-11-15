@@ -40,6 +40,7 @@ import {
 } from "./lib/stats";
 import AdSlot from "./components/AdSlot";
 import CommunityPage from "./components/CommunityPage";
+import ComparePage from "./components/ComparePage";
 import AugmentsTable from "./components/AugmentsTable";
 import ChampionDetail from "./components/ChampionDetail";
 import ChampionsTable from "./components/ChampionsTable";
@@ -49,7 +50,7 @@ import { AD_SLOTS, loadAdSense } from "./lib/adsense";
 import { championSlug } from "./lib/slug";
 import { useUrlState } from "./lib/urlState";
 
-type Tab = "augments" | "champions";
+type Tab = "augments" | "champions" | "compare";
 
 // What every page needs, and only that. The per-champion item and augment
 // grains are ~580k rows between them and grow with every contributed game;
@@ -96,7 +97,9 @@ export default function App() {
 
   // Champions tier list is the home tab; ?tab=champions from legacy links
   // simply falls through to the default
-  const tab: Tab = params.get("tab") === "augments" ? "augments" : "champions";
+  const tabParam = params.get("tab");
+  const tab: Tab =
+    tabParam === "augments" ? "augments" : tabParam === "compare" ? "compare" : "champions";
   const patchParam = params.get("patch");
   const queueParam = params.get("queue");
 
@@ -538,6 +541,10 @@ export default function App() {
                 if (onChampionPage || onCommunityPage) navigate("/");
                 setParam("tab", "augments");
               })}
+              {navTab("Compare", !onCommunityPage && tab === "compare" && !onChampionPage, () => {
+                if (onChampionPage || onCommunityPage) navigate("/");
+                setParam("tab", "compare");
+              })}
               {navTab("Community", onCommunityPage, () => {
                 if (!onCommunityPage) navigate("/community/");
               })}
@@ -562,11 +569,13 @@ export default function App() {
                   }
                   size="sm"
                 />
-                <PatchRangeSelect
-                  patches={patches}
-                  selection={parsePatchParam(patchParam, patches)}
-                  onChange={(next) => setParam("patch", encodePatchParam(next, patches))}
-                />
+                {tab !== "compare" && (
+                  <PatchRangeSelect
+                    patches={patches}
+                    selection={parsePatchParam(patchParam, patches)}
+                    onChange={(next) => setParam("patch", encodePatchParam(next, patches))}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -580,7 +589,7 @@ export default function App() {
             </div>
           )}
 
-          {autoWiden && !onCommunityPage && (
+          {autoWiden && !onCommunityPage && tab !== "compare" && (
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-lol-gold/25 bg-lol-gold/[0.06] px-4 py-3">
               <InfoIcon
                 width={15}
@@ -658,7 +667,20 @@ export default function App() {
               </>
             )}
 
-          {data && !onChampionPage && !onCommunityPage && (
+          {data && !onChampionPage && !onCommunityPage && tab === "compare" && patches.length > 0 && (
+            <ComparePage
+              patches={patches}
+              from={params.get("from") ?? patches[1] ?? patches[0]}
+              to={params.get("to") ?? patches[0]}
+              view={params.get("view") === "augments" ? "augments" : "champions"}
+              queue={queue}
+              championData={data.championData}
+              augmentData={data.augmentData}
+              onChange={setParam}
+            />
+          )}
+
+          {data && !onChampionPage && !onCommunityPage && tab !== "compare" && (
             <>
               {/* Page title */}
               <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">

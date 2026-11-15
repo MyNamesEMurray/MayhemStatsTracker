@@ -163,7 +163,7 @@ export default function CommunityPage() {
         is the running total of what that adds up to.
       </p>
 
-      <p className={`${LABEL} -mb-2`}>Contribution</p>
+      <p className={`${LABEL} mb-2`}>Contribution</p>
       <div className="grid grid-cols-2 min-[881px]:grid-cols-4 gap-4">
         <StatTile
           label="Contributors"
@@ -186,7 +186,7 @@ export default function CommunityPage() {
         />
       </div>
 
-      <p className={`${LABEL} -mb-2`}>Coverage</p>
+      <p className={`${LABEL} mb-2`}>Coverage</p>
       <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
         <StatTile
           label="Champion matchups"
@@ -196,7 +196,7 @@ export default function CommunityPage() {
         <StatTile label="Patches tracked" value={totals ? totals.patches : "-"} />
       </div>
 
-      <p className={`${LABEL} -mb-2`}>Averages</p>
+      <p className={`${LABEL} mb-2`}>Averages</p>
       <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
         <StatTile
           label="Game length"

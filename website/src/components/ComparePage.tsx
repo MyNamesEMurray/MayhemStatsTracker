@@ -434,7 +434,7 @@ export default function ComparePage({
           {tab("champions", "Champions")}
           {tab("augments", "Augments")}
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span>From</span>
           {patchSelect("from", from)}
           <span>to</span>

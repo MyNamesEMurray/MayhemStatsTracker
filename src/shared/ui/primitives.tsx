@@ -102,7 +102,11 @@ export function StatTile({
       <p className={LABEL}>{label}</p>
       <p className={`text-2xl font-bold mt-1 ${valueClassName}`}>
         {value}
-        {delta && <span className="ml-2 text-xs font-semibold text-lol-win">{delta}</span>}
+        {delta && (
+          <span className="block min-[420px]:inline min-[420px]:ml-2 text-xs font-semibold text-lol-win">
+            {delta}
+          </span>
+        )}
       </p>
       {sub && <p className="text-xs text-lol-text mt-0.5">{sub}</p>}
     </div>

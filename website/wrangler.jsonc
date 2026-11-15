@@ -11,6 +11,9 @@
 {
   "name": "mayhemstats",
   "compatibility_date": "2026-09-20",
+  "observability": {
+    "enabled": true,
+  },
   "assets": {
     // Relative to this file, so website/dist - what `npm run build` writes.
     "directory": "./dist",

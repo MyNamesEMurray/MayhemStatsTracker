@@ -71,7 +71,7 @@ function Delta({ value, unit }: { value: number; unit: string }) {
   const tone =
     rounded > 0 ? "text-lol-win" : rounded < 0 ? "text-lol-loss" : "text-lol-text";
   return (
-    <span className={`font-semibold ${tone}`}>
+    <span className={`font-semibold whitespace-nowrap ${tone}`}>
       {rounded > 0 ? "+" : ""}
       {rounded.toFixed(1)}
       {unit}
@@ -200,6 +200,7 @@ export default function ComparePage({
         key: "dPick",
         label: "Pick rate change",
         shortLabel: "Pick rate chg",
+        cardLabel: "Pick rate chg",
         width: "w-[140px] min-[1200px]:w-[175px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.pickTo - r.pickFrom,
@@ -209,6 +210,7 @@ export default function ComparePage({
         key: "dScore",
         label: "Score change",
         shortLabel: "Score chg",
+        cardLabel: "Score chg",
         width: "w-[120px] min-[1200px]:w-[150px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.scoreTo - r.scoreFrom,
@@ -282,7 +284,7 @@ export default function ComparePage({
           <span>to</span>
           {patchSelect("to", to)}
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-[640px]:ml-0 max-[640px]:w-full">
           <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
           <SearchField
             value={search}

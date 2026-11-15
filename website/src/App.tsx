@@ -476,7 +476,7 @@ export default function App() {
   const navTab = (label: string, active: boolean, onClick: () => void) => (
     <button
       onClick={onClick}
-      className={`flex items-center px-3.5 max-[360px]:px-2 text-[13px] font-semibold transition-colors ${
+      className={`flex items-center px-3.5 max-[480px]:px-2 max-[400px]:px-1.5 text-[13px] font-semibold transition-colors ${
         active
           ? "text-lol-gold-light shadow-[inset_0_-2px_0_var(--color-lol-gold)]"
           : "text-lol-text hover:text-lol-gold-light"
@@ -528,7 +528,7 @@ export default function App() {
             {/* The nav takes the slack instead of the filter group using ml-auto:
               that right-aligns the filters while they share the top row, but
               leaves them left-aligned with everything else once they wrap. */}
-            <nav className="flex gap-1 self-stretch min-[1081px]:flex-1">
+            <nav className="flex gap-1 self-stretch max-w-full overflow-x-auto min-[1081px]:flex-1">
               {navTab(
                 "Champions",
                 !onCommunityPage && (tab === "champions" || onChampionPage),

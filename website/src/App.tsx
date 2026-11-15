@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  fetchAugmentTotals,
+  fetchAugmentTotalsReport,
+  fetchAugmentTotalsStrict,
   fetchChampionAugments,
   fetchChampionItems,
   fetchChampionMatchups,
@@ -93,6 +94,23 @@ export default function App() {
   const [patchList, setPatchList] = useState<string[]>([]);
   const [loadedPatches, setLoadedPatches] = useState<Set<string>>(() => new Set());
   const [loadingMore, setLoadingMore] = useState(false);
+  // Patches whose augment rows failed to load ("*" when every patch was asked
+  // for at once). The champion rows for them did load, so they count as loaded;
+  // this is what lets the Augments tab say so and offer a retry.
+  const [failedAugments, setFailedAugments] = useState<string[]>([]);
+  const noteAugments = useCallback((patches: string[] | undefined, failed: boolean) => {
+    if (failed) setFailedAugments((prev) => [...new Set([...prev, ...(patches ?? ["*"])])]);
+  }, []);
+  const retryAugments = async () => {
+    const wanted = failedAugments.includes("*") ? undefined : failedAugments;
+    try {
+      const rows = await fetchAugmentTotalsStrict(wanted);
+      setData((d) => (d ? { ...d, augmentRows: [...d.augmentRows, ...rows] } : d));
+      setFailedAugments([]);
+    } catch {
+      // Still failing: the notice stays up for another try
+    }
+  };
   const { path, params, setParam, navigate, replaceUrl } = useUrlState();
 
   // Champions tier list is the home tab; ?tab=champions from legacy links
@@ -122,7 +140,8 @@ export default function App() {
       }
       return null;
     }
-    return legacyChampion ? Number(legacyChampion) : null;
+    // A hand-edited ?champion=abc is no champion, not a request for NaN
+    return legacyChampion && /^\d+$/.test(legacyChampion) ? Number(legacyChampion) : null;
   }, [championSlugFromPath, legacyChampion, data]);
 
   // The prerendered static block is a fallback for readers who arrive before
@@ -200,14 +219,15 @@ export default function App() {
       // empty board; fetching everything is what this did before staging and
       // is never wrong, only slower.
       const first = newest.length > 0 ? newest.slice(0, 1) : undefined;
-      const [championRows, augmentRows, championData, augmentData] = await Promise.all([
+      const [championRows, augments, championData, augmentData] = await Promise.all([
         fetchChampionStats(first),
-        fetchAugmentTotals(first),
+        fetchAugmentTotalsReport(first),
         loadChampionData(),
         loadAugmentData(),
       ]);
       if (!active) return;
-      setData({ championRows, augmentRows, championData, augmentData });
+      noteAugments(first, augments.failed);
+      setData({ championRows, augmentRows: augments.rows, championData, augmentData });
       // Everything that came back is loaded, whichever way it was asked for
       setLoadedPatches(new Set(first ?? championRows.map((r) => r.patch)));
 
@@ -217,15 +237,16 @@ export default function App() {
         const rest = widenReach.slice(first.length);
         const [moreChamps, moreAugs] = await Promise.all([
           fetchChampionStats(rest),
-          fetchAugmentTotals(rest),
+          fetchAugmentTotalsReport(rest),
         ]);
         if (!active) return;
+        noteAugments(rest, moreAugs.failed);
         setData((d) =>
           d
             ? {
                 ...d,
                 championRows: [...d.championRows, ...moreChamps],
-                augmentRows: [...d.augmentRows, ...moreAugs],
+                augmentRows: [...d.augmentRows, ...moreAugs.rows],
               }
             : d,
         );
@@ -303,15 +324,16 @@ export default function App() {
 
     let active = true;
     setLoadingMore(true);
-    Promise.all([fetchChampionStats(missing), fetchAugmentTotals(missing)])
+    Promise.all([fetchChampionStats(missing), fetchAugmentTotalsReport(missing)])
       .then(([moreChamps, moreAugs]) => {
         if (!active) return;
+        noteAugments(missing, moreAugs.failed);
         setData((d) =>
           d
             ? {
                 ...d,
                 championRows: [...d.championRows, ...moreChamps],
-                augmentRows: [...d.augmentRows, ...moreAugs],
+                augmentRows: [...d.augmentRows, ...moreAugs.rows],
               }
             : d,
         );
@@ -753,6 +775,14 @@ export default function App() {
 
               <AdSlot slot={AD_SLOTS.top} />
 
+              {tab === "augments" && failedAugments.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-lol-loss/40 bg-lol-card px-4 py-3 text-[13px]">
+                  <span className="text-lol-loss">
+                    Some augment numbers didn't load, so the counts below are incomplete.
+                  </span>
+                  <Button onClick={retryAugments}>Retry</Button>
+                </div>
+              )}
               {tab === "augments" ? (
                 <AugmentsTable
                   rows={data.augmentRows}

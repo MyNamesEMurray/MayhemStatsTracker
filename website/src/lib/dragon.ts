@@ -26,7 +26,6 @@ export type ChampionData = Record<number, ChampionInfo>;
 export type AugmentData = Record<number, AugmentInfo>;
 
 // Artwork URLs are shared with the desktop app
-export { AUGMENT_ICON_BASE, augmentIconUrl, CHAMPION_ICON_URL } from "../../../src/shared/cdn.ts";
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
@@ -123,7 +122,6 @@ export interface ItemInfo {
 
 export type ItemData = Record<number, ItemInfo>;
 
-export { itemIconUrl } from "../../../src/shared/cdn.ts";
 
 // items.json is a few MB, so it's loaded only when a champion detail view
 // needs it, reduced to id → {name, icon}, and cached like the others.

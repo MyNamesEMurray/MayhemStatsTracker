@@ -12,7 +12,7 @@
 //     page never claims "100% win rate over 1 pick".
 //
 // Fails soft locally: if the data APIs are unreachable at build time, a local
-// or CI build still produces a plain SPA. On the real deploy build it fails
+// build still produces a plain SPA. On the real deploy build and in CI it fails
 // instead (see the end of this file).
 import { execFileSync } from "child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
@@ -25,6 +25,14 @@ import { comparePatches, formatPatch } from "../../src/shared/patch.ts";
 import { QUEUE_ID_MAYHEM } from "../../src/shared/queues.ts";
 import { rankForBuild, score } from "../../src/shared/score.ts";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../src/shared/supabase.ts";
+import {
+  aggregate,
+  INDEX_MIN_GAMES,
+  isIndexable,
+  pickRatePct,
+  relative,
+  winRateRange,
+} from "../src/lib/championSummary.ts";
 import { championSlug } from "../src/lib/slug.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,10 +40,6 @@ const DIST = path.resolve(__dirname, "../dist");
 const SITE = "https://mayhemstats.com";
 
 
-// A champion page is only worth putting in front of search users once the
-// win rate on it carries a readable confidence interval. Twenty games is
-// the same floor the app uses to stop muting win rates (src/lib/stats.ts).
-const INDEX_MIN_GAMES = 20;
 // Nothing gets printed as a recommendation from fewer picks than this.
 const ITEM_MIN_PICKS = 3;
 const AUGMENT_MIN_PICKS = 3;
@@ -99,38 +103,6 @@ const esc = (s) =>
 const pct = (wins, n) => (n > 0 ? ((wins / n) * 100).toFixed(1) : "0.0");
 const num = (n) => Math.round(n).toLocaleString();
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
-// Half-width of the 95% normal-approximation interval on a win rate, in
-// points. Printed so a reader can see how much of a number is noise.
-const marginOfError = (wins, games) => {
-  const p = wins / games;
-  return 100 * 1.96 * Math.sqrt((p * (1 - p)) / games);
-};
-
-// "18% above" / "in line with" / "12% below", for comparing a champion's
-// per-game averages against the whole database
-function relative(value, base) {
-  if (!base) return "in line with the mode average";
-  const diff = ((value - base) / base) * 100;
-  if (Math.abs(diff) < 8) return "in line with the mode average";
-  return `${Math.round(Math.abs(diff))}% ${diff > 0 ? "above" : "below"} the mode average`;
-}
-
-function aggregate(rows, keyField, extra = []) {
-  const map = new Map();
-  for (const r of rows) {
-    let e = map.get(r[keyField]);
-    if (!e) {
-      e = { key: r[keyField], picks: 0, wins: 0 };
-      for (const f of extra) e[f] = 0;
-      map.set(r[keyField], e);
-    }
-    e.picks += r.picks ?? r.games;
-    e.wins += r.wins;
-    for (const f of extra) e[f] += r[f] ?? 0;
-  }
-  return Array.from(map.values());
-}
 
 // Colours come from the built stylesheet's :root tokens, which every
 // prerendered page links before any JavaScript runs.
@@ -225,7 +197,6 @@ async function main() {
   const modeAvg = {};
   for (const f of STAT_FIELDS) modeAvg[f] = modeTotals.games ? modeTotals[f] / modeTotals.games : 0;
   // Ten champion slots per match
-  const totalMatches = Math.round(modeTotals.games / 10);
 
   // Champions with enough games to lead cross-links
   const topChamps = [...perChampion.entries()]
@@ -251,7 +222,7 @@ async function main() {
     const name = championNames[id];
     if (!name || agg.games < 1) continue;
     const slug = championSlug(name);
-    const indexable = agg.games >= INDEX_MIN_GAMES;
+    const indexable = isIndexable(agg.games);
 
     const champAugments = aggregate(
       augmentRows.filter((r) => r.champion_id === id),
@@ -273,10 +244,10 @@ async function main() {
 
     const wr = pct(agg.wins, agg.games);
     const kda = ((agg.kills + agg.assists) / Math.max(agg.deaths, 1)).toFixed(2);
-    const moe = marginOfError(agg.wins, agg.games).toFixed(1);
+    const range = winRateRange(agg.wins, agg.games);
     const perGame = {};
     for (const f of STAT_FIELDS) perGame[f] = agg[f] / agg.games;
-    const pickRate = totalMatches ? (agg.games / totalMatches) * 100 : 0;
+    const pickRate = pickRatePct(agg.games, modeTotals.games);
 
     const title = `${name} Build - ARAM Mayhem Augments, Items & Win Rate | MayhemStats`;
     const description = indexable
@@ -343,7 +314,7 @@ async function main() {
       .join("\n        ");
 
     const confidence = indexable
-      ? `Over ${plural(agg.games, "game")} that win rate carries a 95% margin of error of roughly ±${moe} points, so read it as a range (${(Number(wr) - Number(moe)).toFixed(1)}–${(Number(wr) + Number(moe)).toFixed(1)}%) rather than a fixed number.`
+      ? `Over ${plural(agg.games, "game")} that win rate sits in a 95% confidence range of ${range.low.toFixed(1)}–${range.high.toFixed(1)}%, so read it as a range rather than a fixed number.`
       : `That is only ${plural(agg.games, "game")} - far too few to call a win rate. The numbers below are here for completeness, this page is kept out of search until the sample is worth reading, and the fastest way to fix that is more contributors: <a href="/download/">run the tracker</a> and opt in.`;
 
     const html = `<!doctype html>
@@ -373,7 +344,7 @@ ${PAGE_STYLE}
     <section id="prerender">
       <p><a href="/">← MayhemStats: all champions</a></p>
       <h1><img src="${iconUrl}" alt="" width="40" height="40" loading="lazy" />${esc(name)} - ARAM Mayhem Build &amp; Stats</h1>
-      <p>${esc(name)} wins <strong>${wr}%</strong> of ${plural(agg.games, "community game")} in ARAM Mayhem, with an average KDA of ${kda}${pickRate >= 1 ? `, appearing in ${pickRate.toFixed(1)}% of tracked matches` : ""}. All numbers come from anonymized games contributed by players running the free <a href="/download/">MayhemStats Tracker</a> app - never from ARAM or Arena stand-ins.</p>
+      <p>${esc(name)} wins <strong>${wr}%</strong> of ${plural(agg.games, "community game")} in ARAM Mayhem, with an average KDA of ${kda}${pickRate >= 0.1 ? ` and a ${pickRate.toFixed(1)}% pick rate` : ""}. All numbers come from anonymized games contributed by players running the free <a href="/download/">MayhemStats Tracker</a> app - never from ARAM or Arena stand-ins.</p>
       <p class="note">${confidence}</p>
       <h2>How ${esc(name)} plays in Mayhem</h2>
       <p>Per game, ${esc(name)}:</p>
@@ -515,9 +486,10 @@ main().catch((err) => {
   // On the real build, a failure has to stop the deploy: shipping without the
   // champion pages sends those URLs to the SPA fallback, which carries the
   // homepage's canonical tag and reads to Google as a duplicate. A failed
-  // build leaves the last good version live. Local and CI builds stay soft so
-  // a flaky network does not block them. Workers Builds sets WORKERS_CI.
-  const real = process.env.WORKERS_CI || process.env.CF_PAGES;
+  // build leaves the last good version live. Local builds stay soft so a flaky
+  // network does not block them; CI sets PRERENDER_STRICT, and Workers Builds
+  // sets WORKERS_CI.
+  const real = process.env.WORKERS_CI || process.env.CF_PAGES || process.env.PRERENDER_STRICT;
   console[real ? "error" : "warn"](
     `prerender ${real ? "FAILED" : "skipped"}: ${err.message}${real ? "" : " - deploying as plain SPA"}`,
   );

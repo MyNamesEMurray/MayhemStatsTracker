@@ -81,7 +81,9 @@ jobs:
         working-directory: website
 
       # Runs tsc --noEmit, then vite build, then the prerender pass. Prerender
-      # reads live community data and fails soft, so a Supabase hiccup leaves
-      # the build green rather than blocking a pull request.
+      # is strict here, as it is on the real deploy, so a bug in the page
+      # templates fails the pull request instead of surfacing on production.
       - run: npm run build
         working-directory: website
+        env:
+          PRERENDER_STRICT: "1"

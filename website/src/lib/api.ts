@@ -108,8 +108,7 @@ export function fetchChampionStats(patches?: string[]): Promise<ChampionStatRow[
   );
 }
 
-// Throws on failure. Callers that can show an error use this one, and callers
-// that cannot afford to - the tier lists - use fetchAugmentTotals below.
+// Throws on failure, so a caller that can show an error (Compare) does.
 export function fetchAugmentTotalsStrict(patches?: string[]): Promise<AugmentTotalRow[]> {
   return fetchAllRows<AugmentTotalRow>(
     "augment_totals",
@@ -117,15 +116,19 @@ export function fetchAugmentTotalsStrict(patches?: string[]): Promise<AugmentTot
   );
 }
 
-export async function fetchAugmentTotals(patches?: string[]): Promise<AugmentTotalRow[]> {
+// For the tier lists, which must not go down with the augment rollup: it can be
+// one migration behind the client during a deploy, and an empty augment tab is
+// a bad half-hour where an unusable champion list is worse. A failure is
+// reported rather than hidden, because an empty list and a failed one look the
+// same to the caller and only one of them should be retried.
+export async function fetchAugmentTotalsReport(
+  patches?: string[],
+): Promise<{ rows: AugmentTotalRow[]; failed: boolean }> {
   try {
-    return await fetchAugmentTotalsStrict(patches);
+    return { rows: await fetchAugmentTotalsStrict(patches), failed: false };
   } catch (err) {
-    // The rollup is one migration behind the client during a deploy. An empty
-    // augment tab is a bad half-hour; taking the champion tier list down with
-    // it - which is what letting this reject would do - is worse.
     console.warn(`augment_totals unavailable: ${err instanceof Error ? err.message : err}`);
-    return [];
+    return { rows: [], failed: true };
   }
 }
 

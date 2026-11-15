@@ -97,7 +97,16 @@ export default function ChampionDetail({
   const [augSearch, setAugSearch] = useState("");
   const [augRarity, setAugRarity] = useState<Rarity>("all");
   useEffect(() => {
-    loadItemData().then(setItemData);
+    let active = true;
+    loadItemData()
+      .then((d) => {
+        if (active) setItemData(d);
+      })
+      // No item names is a degraded page, not a crashed one
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   // The champion's aggregate line plus its tier within the full cohort

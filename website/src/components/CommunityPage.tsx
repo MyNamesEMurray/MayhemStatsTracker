@@ -126,6 +126,19 @@ export default function CommunityPage() {
     );
   }
 
+  // Every unordered pair of the champions that have appeared, mirror matchups
+  // (Lux vs Lux) included - that is what the observed count counts too
+  const possibleMatchups = coverage ? (coverage.champions * (coverage.champions + 1)) / 2 : 0;
+  const matchupPct =
+    coverage && possibleMatchups > 0
+      ? ((coverage.matchups / possibleMatchups) * 100).toFixed(1)
+      : "0.0";
+  // Mean of the complete weeks in the chart; the newest bar is still filling
+  const full = chart.slice(0, -1);
+  const perWeek = full.length
+    ? Math.round(full.reduce((n, w) => n + w.games, 0) / full.length)
+    : 0;
+
   const hours = totals ? totals.total_seconds / 3600 : 0;
   const formatHours = (h: number) => (h >= 100 ? Math.round(h).toLocaleString() : h.toFixed(1));
   const plus = (n: number | null | undefined, unit = "") =>
@@ -150,6 +163,7 @@ export default function CommunityPage() {
         is the running total of what that adds up to.
       </p>
 
+      <p className={`${LABEL} -mb-2`}>Contribution</p>
       <div className="grid grid-cols-2 min-[881px]:grid-cols-4 gap-4">
         <StatTile
           label="Contributors"
@@ -167,22 +181,42 @@ export default function CommunityPage() {
           delta={plus(growth && Math.round(growth.new_seconds_30d / 3600), " h")}
         />
         <StatTile
-          label="Champion matchups"
-          value={coverage ? coverage.matchups.toLocaleString() : "-"}
-        />
-        <StatTile label="Patches tracked" value={totals ? totals.patches : "-"} />
-        <StatTile label="Champions seen" value={coverage ? coverage.champions : "-"} />
-        <StatTile
           label="Player performances"
           value={totals ? performances.toLocaleString() : "-"}
         />
+      </div>
+
+      <p className={`${LABEL} -mb-2`}>Coverage</p>
+      <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
         <StatTile
-          label="Avg game length"
+          label="Champion matchups"
+          value={coverage ? coverage.matchups.toLocaleString() : "-"}
+        />
+        <StatTile label="Matchup coverage" value={coverage ? `${matchupPct}%` : "-"} />
+        <StatTile label="Patches tracked" value={totals ? totals.patches : "-"} />
+      </div>
+
+      <p className={`${LABEL} -mb-2`}>Averages</p>
+      <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
+        <StatTile
+          label="Game length"
           value={
             totals && totals.games > 0
               ? `${Math.round(totals.total_seconds / totals.games / 60)} min`
               : "-"
           }
+        />
+        <StatTile
+          label="Games per contributor"
+          value={
+            totals && totals.contributors > 0
+              ? Math.round(totals.games / totals.contributors).toLocaleString()
+              : "-"
+          }
+        />
+        <StatTile
+          label="Games per week"
+          value={perWeek ? perWeek.toLocaleString() : "-"}
         />
       </div>
 

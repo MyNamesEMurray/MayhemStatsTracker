@@ -34,7 +34,6 @@ import {
   // that produces one from a selection
   patchParam as encodePatchParam,
   patchesIn,
-  MAYHEM_QUEUE_IDS,
   QUEUE_LABELS,
   type Filters,
 } from "./lib/stats";
@@ -45,7 +44,6 @@ import AugmentsTable from "./components/AugmentsTable";
 import ChampionDetail from "./components/ChampionDetail";
 import ChampionsTable from "./components/ChampionsTable";
 import PatchRangeSelect from "../../src/shared/ui/PatchRangeSelect";
-import QueueSelect from "../../src/shared/ui/QueueSelect";
 import { AD_SLOTS, loadAdSense } from "./lib/adsense";
 import { championSlug } from "./lib/slug";
 import { useUrlState } from "./lib/urlState";
@@ -336,13 +334,9 @@ export default function App() {
         ? QUEUE_LABELS[DEFAULT_QUEUE]
         : (QUEUE_LABELS[queue] ?? `Queue ${queue}`);
 
-  // What the picker shows, which is not always what the tables filter on: the
-  // first rows have not landed on the very first paint, so `queues` is empty
-  // and `queue` resolves to undefined. Reading the parameter the way the
-  // label does keeps the control showing the default instead of blinking out
-  // of the header and back in a beat later.
-  const queueOptions = queues.length > 0 ? queues : MAYHEM_QUEUE_IDS;
-  const selectedQueue = queueParam === "all" ? undefined : (queue ?? DEFAULT_QUEUE);
+  // There is no queue picker: ARAM Mayhem is the only queue still receiving
+  // games (Mayhem Classic's last game was 2026-08-28). ?queue= still works for
+  // a direct link; bring the picker back if a second live queue appears.
 
   // Default view is the current patch; ?patch= also supports "all", a single
   // patch, or an inclusive "A-B" range
@@ -555,20 +549,6 @@ export default function App() {
               can't change anything shouldn't ask to be tried. */}
             {!onCommunityPage && (
               <div className="flex items-center gap-2 py-2 max-[1080px]:w-full max-[1080px]:pt-0 max-[1080px]:pb-2.5 max-[1080px]:flex-wrap">
-                <QueueSelect
-                  queues={queueOptions}
-                  value={selectedQueue}
-                  onChange={(q) =>
-                    // The default queue is the empty parameter, so choosing it
-                    // takes ?queue= back out of the URL rather than spelling
-                    // out what no parameter already means.
-                    setParam(
-                      "queue",
-                      q === undefined ? "all" : q === DEFAULT_QUEUE ? null : String(q),
-                    )
-                  }
-                  size="sm"
-                />
                 {tab !== "compare" && (
                   <PatchRangeSelect
                     patches={patches}

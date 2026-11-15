@@ -288,6 +288,23 @@ export interface MatchupCoverage {
   champions: number;
 }
 
+// What the database gained in the last 30 days. Optional garnish on the
+// stat tiles: a missing view yields no deltas rather than an error.
+export interface CommunityGrowth {
+  new_contributors_30d: number;
+  new_games_30d: number;
+  new_seconds_30d: number;
+}
+
+export async function fetchCommunityGrowth(): Promise<CommunityGrowth | null> {
+  try {
+    const rows = await fetchAllRows<CommunityGrowth>("community_growth");
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchMatchupCoverage(): Promise<MatchupCoverage | null> {
   try {
     const rows = await fetchAllRows<MatchupCoverage>("matchup_coverage");

@@ -84,12 +84,15 @@ export function StatTile({
   label,
   value,
   sub,
+  delta,
   valueClassName = "text-lol-text-bright",
   className = "",
 }: {
   label: string;
   value: string | number;
   sub?: string;
+  // A small green change beside the value, e.g. "+12 / 30d"
+  delta?: string;
   // For a value that carries meaning - a win rate, a performance ramp
   valueClassName?: string;
   className?: string;
@@ -97,7 +100,10 @@ export function StatTile({
   return (
     <div className={`${PANEL} p-[18px] ${className}`}>
       <p className={LABEL}>{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${valueClassName}`}>{value}</p>
+      <p className={`text-2xl font-bold mt-1 ${valueClassName}`}>
+        {value}
+        {delta && <span className="ml-2 text-xs font-semibold text-lol-win">{delta}</span>}
+      </p>
       {sub && <p className="text-xs text-lol-text mt-0.5">{sub}</p>}
     </div>
   );

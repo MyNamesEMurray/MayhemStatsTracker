@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { buttonClass, LABEL, PANEL, StatTile } from "../../../src/shared/ui/primitives.tsx";
 import {
+  fetchCommunityGrowth,
   fetchCommunityTotals,
   fetchGamesPerDay,
   fetchMatchupCoverage,
   fetchPatchSpans,
+  type CommunityGrowth,
   type CommunityTotals,
   type GamesPerDayRow,
   type MatchupCoverage,
@@ -35,6 +37,7 @@ export default function CommunityPage() {
   const [perDay, setPerDay] = useState<GamesPerDayRow[]>([]);
   const [spans, setSpans] = useState<PatchSpanRow[]>([]);
   const [coverage, setCoverage] = useState<MatchupCoverage | null>(null);
+  const [growth, setGrowth] = useState<CommunityGrowth | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,12 +46,14 @@ export default function CommunityPage() {
       fetchGamesPerDay(),
       fetchPatchSpans(),
       fetchMatchupCoverage(),
+      fetchCommunityGrowth(),
     ])
-      .then(([t, d, p, c]) => {
+      .then(([t, d, p, c, g]) => {
         setTotals(t);
         setPerDay(d);
         setSpans(p);
         setCoverage(c);
+        setGrowth(g);
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
@@ -120,15 +125,10 @@ export default function CommunityPage() {
     );
   }
 
-  // Every unordered pair of the champions that have appeared, mirror matchups
-  // (Lux vs Lux) included - that is what the observed count counts too
-  const possibleMatchups = coverage ? (coverage.champions * (coverage.champions + 1)) / 2 : 0;
-  const matchupPct =
-    coverage && possibleMatchups > 0
-      ? ((coverage.matchups / possibleMatchups) * 100).toFixed(1)
-      : "0.0";
-
   const hours = totals ? totals.total_seconds / 3600 : 0;
+  const formatHours = (h: number) => (h >= 100 ? Math.round(h).toLocaleString() : h.toFixed(1));
+  const plus = (n: number | null | undefined, unit = "") =>
+    n ? `+${n.toLocaleString()}${unit} / 30d` : undefined;
   const performances = totals ? totals.games * 10 : 0;
   const since = totals?.first_game_ms
     ? new Date(totals.first_game_ms).toLocaleDateString("en-US", {
@@ -153,29 +153,34 @@ export default function CommunityPage() {
         <StatTile
           label="Contributors"
           value={totals ? totals.contributors.toLocaleString() : "-"}
-          sub="players sharing their games"
+          delta={plus(growth?.new_contributors_30d)}
         />
         <StatTile
           label="Games analyzed"
           value={totals ? totals.games.toLocaleString() : "-"}
-          sub={`${performances.toLocaleString()} player performances`}
+          delta={plus(growth?.new_games_30d)}
         />
         <StatTile
           label="Gameplay analyzed"
-          value={
-            totals
-              ? `${hours >= 100 ? Math.round(hours).toLocaleString() : hours.toFixed(1)} h`
-              : "-"
-          }
-          sub="of ARAM Mayhem, end to end"
+          value={totals ? `${formatHours(hours)} h` : "-"}
+          delta={plus(growth && Math.round(growth.new_seconds_30d / 3600), " h")}
         />
         <StatTile
           label="Champion matchups"
           value={coverage ? coverage.matchups.toLocaleString() : "-"}
-          sub={
-            coverage
-              ? `${matchupPct}% of the ${possibleMatchups.toLocaleString()} possible`
-              : "unique pairings seen"
+        />
+        <StatTile label="Patches tracked" value={totals ? totals.patches : "-"} />
+        <StatTile label="Champions seen" value={coverage ? coverage.champions : "-"} />
+        <StatTile
+          label="Player performances"
+          value={totals ? performances.toLocaleString() : "-"}
+        />
+        <StatTile
+          label="Avg game length"
+          value={
+            totals && totals.games > 0
+              ? `${Math.round(totals.total_seconds / totals.games / 60)} min`
+              : "-"
           }
         />
       </div>

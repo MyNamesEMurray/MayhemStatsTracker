@@ -75,7 +75,16 @@ export default function StatBoard<Row, K extends string>({
                 ) : (
                   <SortHeader
                     key={i}
-                    label={c.label}
+                    label={
+                      c.shortLabel ? (
+                        <>
+                          <span className="max-[1199px]:hidden">{c.label}</span>
+                          <span className="min-[1200px]:hidden">{c.shortLabel}</span>
+                        </>
+                      ) : (
+                        c.label
+                      )
+                    }
                     field={c.key}
                     naturalDir={c.naturalDir}
                     title={c.headerTitle}

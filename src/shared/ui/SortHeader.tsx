@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useSort, type SortDir, type SortState } from "./sortState";
 
 // The sortable column header itself. The state it drives lives in
@@ -20,7 +21,7 @@ export default function SortHeader<K extends string>({
   thClass = TH_BASE,
   compact = false,
 }: {
-  label: string;
+  label: ReactNode;
   field: K;
   sort: SortState<K>;
   onSort: (key: K, naturalDir?: SortDir) => void;

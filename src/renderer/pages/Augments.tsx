@@ -11,7 +11,7 @@ import type { AugmentStatsDetailed, ChampionStats } from "../lib/types";
 import ChampionIcon from "../../shared/ui/ChampionIcon";
 import WinRateBar from "../../shared/ui/WinRateBar";
 import PatchRangeSelect from "../../shared/ui/PatchRangeSelect";
-import QueueSelect, { queueLabel } from "../components/QueueSelect";
+import { queueLabel } from "../components/QueueSelect";
 import RarityFilter, { type Rarity } from "../../shared/ui/RarityFilter";
 import { useSort } from "../../shared/ui/SortHeader";
 import SearchField from "../../shared/ui/SearchField";
@@ -30,7 +30,7 @@ import { patchesIn, patchLabel } from "../../shared/patch";
 export default function Augments() {
   const champData = useChampionData();
   const augmentData = useAugmentData();
-  const { patchSelection, setPatchSelection, queue, setQueue } = useStatsFilters();
+  const { patchSelection, setPatchSelection, queue } = useStatsFilters();
   const [source, setSource] = useStatsSource();
   const patchOptions = usePatchOptions(source);
   const widen = useAutoWiden({
@@ -221,7 +221,6 @@ export default function Augments() {
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <QueueSelect value={queue} onChange={setQueue} />
           <PatchRangeSelect
             patches={patchOptions}
             selection={patchSelection}

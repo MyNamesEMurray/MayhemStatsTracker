@@ -37,7 +37,6 @@ import TierBadge from "../../shared/ui/TierBadge";
 import PatchRangeSelect from "../../shared/ui/PatchRangeSelect";
 import { usePatchOptions } from "../hooks/usePatchOptions";
 import { patchesIn } from "../../shared/patch";
-import QueueSelect from "../components/QueueSelect";
 
 // Same floors the website and the prerendered pages use
 const ITEM_MIN_GAMES = 3;
@@ -180,7 +179,7 @@ export default function ChampionDetail() {
   // community pool doesn't get it while sharing is off
   const source: StatsSource = resolveSource(requested, sharing);
   const patchOptions = usePatchOptions(source);
-  const { patchSelection, setPatchSelection, queue, setQueue } = useUrlStatsFilters(patchOptions);
+  const { patchSelection, setPatchSelection, queue } = useUrlStatsFilters(patchOptions);
   const patches = useMemo(
     () => patchesIn(patchSelection, patchOptions),
     [patchSelection, patchOptions],
@@ -411,7 +410,6 @@ export default function ChampionDetail() {
         >
           Compare across patches →
         </button>
-        <QueueSelect value={queue} onChange={setQueue} />
         <PatchRangeSelect
           patches={patchOptions}
           selection={patchSelection}

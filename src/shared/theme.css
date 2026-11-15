@@ -400,3 +400,16 @@ body {
     z-index: 3;
   }
 }
+
+/* Below the width where the table fits, it scrolls inside its own panel and
+   the header sticks to the panel's top, not the page's */
+@media (max-width: 1099px) {
+  .stat-board[data-sticky="page"][data-fits="lg"] thead {
+    top: 0;
+  }
+}
+@media (max-width: 1699px) {
+  .stat-board[data-sticky="page"][data-fits="xl"] thead {
+    top: 0;
+  }
+}

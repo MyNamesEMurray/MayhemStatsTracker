@@ -19,6 +19,13 @@ import { sortOptions, sortRows, type BoardColumn, type CardArea } from "./boardS
 // that was written twice - the sort comparator, the header row, the card
 // breakpoint, the empty state - is here or in boardSort.ts beside it.
 
+// Under 701px the table is cards and the page scrolls; above, a board too wide
+// to fit scrolls inside a panel that stops short of the window's height.
+// --board-chrome is whatever sits above the board that the host's header
+// height does not already cover.
+const PANEL_SCROLL =
+  "overflow-x-auto min-[701px]:overflow-auto min-[701px]:max-h-[calc(100vh-var(--site-header-h,0px)-var(--board-chrome,2rem))]";
+
 const TH = "px-3 py-[9px] text-left text-[11px] font-medium uppercase tracking-[.08em] select-none";
 
 export default function StatBoard<Row, K extends string>({
@@ -132,15 +139,18 @@ export default function StatBoard<Row, K extends string>({
         className={`${PANEL} ${
           sticky === "page"
             ? // Clipping instead of scrolling is what lets the header stick to
-              // the page, so it only applies once the table fits unscrolled
+              // the page, so it only applies once the table fits unscrolled.
+              // Narrower, the table scrolls inside a panel of its own height,
+              // so the header sticks to that instead of scrolling away.
               fitsFrom === "xl"
-              ? "overflow-x-auto min-[1700px]:overflow-x-clip"
-              : "overflow-x-auto min-[1100px]:overflow-x-clip"
+              ? `${PANEL_SCROLL} min-[1700px]:overflow-y-visible min-[1700px]:overflow-x-clip min-[1700px]:max-h-none`
+              : `${PANEL_SCROLL} min-[1100px]:overflow-y-visible min-[1100px]:overflow-x-clip min-[1100px]:max-h-none`
             : "overflow-x-auto"
         }`}
       >
         <table
           data-sticky={sticky}
+          data-fits={fitsFrom}
           className="stat-board table-fixed w-full border-collapse"
           style={{ minWidth: `${minWidth}px` }}
           data-rank={hasRank ? "yes" : "no"}

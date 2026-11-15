@@ -128,7 +128,7 @@ export default function Layout() {
           )}
         </div>
       )}
-      <main className="flex-1 overflow-y-auto scroll-stable p-5 [--board-top-inset:-20px]">
+      <main className="flex-1 overflow-y-auto scroll-stable p-5 [--board-top-inset:-20px] [--board-chrome:9rem]">
         <Outlet />
       </main>
       {showUpdateDialog && update && (

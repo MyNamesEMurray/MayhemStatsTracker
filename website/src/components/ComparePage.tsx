@@ -76,14 +76,14 @@ interface Side {
 
 // Both sides' rows joined on id. Anything under the sample floor on either
 // side is dropped: a swing between 3 games and 5 games is noise, not a trend.
-function join(from: Side[], to: Side[]): Row[] {
+function join(from: Side[], to: Side[], floor: number): Row[] {
   const slotsFrom = from.reduce((n, r) => n + r.games, 0);
   const slotsTo = to.reduce((n, r) => n + r.games, 0);
   const before = new Map(from.map((r) => [r.id, r]));
   const rows: Row[] = [];
   for (const t of to) {
     const f = before.get(t.id);
-    if (!f || f.games < MIN_SAMPLE || t.games < MIN_SAMPLE) continue;
+    if (!f || f.games < floor || t.games < floor) continue;
     const pooled = (f.wins + t.wins) / (f.games + t.games);
     const se = Math.sqrt(pooled * (1 - pooled) * (1 / f.games + 1 / t.games));
     rows.push({
@@ -175,6 +175,8 @@ export default function ComparePage({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sureOnly, setSureOnly] = useState(false);
+  const [showThin, setShowThin] = useState(false);
+  const floor = showThin ? 1 : MIN_SAMPLE;
   const { sort, toggle } = useSort<SortKey>("dWin");
 
   const key = `${from}|${to}`;
@@ -215,7 +217,7 @@ export default function ComparePage({
       const b = mk(to);
       // Champion rows count player slots; ten of them make a game
       const games = (x: Side[]) => Math.round(x.reduce((n, r) => n + r.games, 0) / 10);
-      return { rows: join(a, b), totalFrom: games(a), totalTo: games(b) };
+      return { rows: join(a, b, floor), totalFrom: games(a), totalTo: games(b) };
     }
     const mk = (p: string): Side[] =>
       aggregateAugments(ready.augments, side(p)).map((a) => ({
@@ -230,8 +232,8 @@ export default function ComparePage({
     const a = mk(from);
     const b = mk(to);
     const picks = (x: Side[]) => x.reduce((n, r) => n + r.games, 0);
-    return { rows: join(a, b), totalFrom: picks(a), totalTo: picks(b) };
-  }, [ready, view, from, to, queue]);
+    return { rows: join(a, b, floor), totalFrom: picks(a), totalTo: picks(b) };
+  }, [ready, view, from, to, queue, floor]);
 
   const name = (id: number) =>
     view === "champions"
@@ -435,6 +437,15 @@ export default function ComparePage({
           />
           High confidence only
         </label>
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showThin}
+            onChange={(e) => setShowThin(e.target.checked)}
+            className="accent-[var(--color-lol-gold)]"
+          />
+          Show under {MIN_SAMPLE} {view === "champions" ? "games" : "picks"}
+        </label>
         <div className="ml-auto flex flex-wrap items-center gap-2 max-[640px]:ml-0 max-[640px]:w-full">
           <SortControl
             options={sortOptions(columns)}
@@ -484,7 +495,9 @@ export default function ComparePage({
             empty={
               from === to
                 ? "Pick two different patches to compare."
-                : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
+                : showThin
+                  ? "Nothing appears on both patches yet."
+                  : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
             }
             footnote={
               <>
@@ -493,10 +506,10 @@ export default function ComparePage({
                 change could just be luck, given how many games each patch has:
                 High is about 95% sure it is real, Medium about 80%, Low means a
                 thin or noisy sample. With this many rows, a few High ones will
-                still be luck. Only{" "}
-                {view === "champions" ? "champions" : "augments"} with at least{" "}
-                {MIN_SAMPLE} {view === "champions" ? "games" : "picks"} on both
-                patches are shown, since smaller samples swing on luck. Score
+                still be luck.{" "}
+                {showThin
+                  ? `Rows with fewer than ${MIN_SAMPLE} ${view === "champions" ? "games" : "picks"} on a patch are included and swing on luck.`
+                  : `Only ${view === "champions" ? "champions" : "augments"} with at least ${MIN_SAMPLE} ${view === "champions" ? "games" : "picks"} on both patches are shown, since smaller samples swing on luck.`} Score
                 change is the shift in the confidence-floored score used by the
                 tier lists.
               </>

@@ -235,6 +235,11 @@ export default function App() {
       const widenReach = newest.slice(0, AUTO_WIDEN_MAX_PATCHES);
       if (first && widenReach.length > first.length) {
         const rest = widenReach.slice(first.length);
+        // Claimed before the fetch, not after: the effect below loads whatever
+        // a deep link asks for that is not marked loaded, and with these still
+        // unmarked it fetched the same patches a second time and both sets of
+        // rows were added, doubling the games for ?patch=all.
+        setLoadedPatches((prev) => new Set([...prev, ...rest]));
         const [moreChamps, moreAugs] = await Promise.all([
           fetchChampionStats(rest),
           fetchAugmentTotalsReport(rest),
@@ -320,7 +325,11 @@ export default function App() {
     if (!data || patchList.length === 0) return;
     const wanted = patchesIn(parsePatchParam(patchParam, patches), patches) ?? patches;
     const missing = wanted.filter((p) => !loadedPatches.has(p));
-    if (missing.length === 0) return;
+    if (missing.length === 0) {
+      // A run that was cancelled mid-fetch never cleared this
+      setLoadingMore(false);
+      return;
+    }
 
     let active = true;
     setLoadingMore(true);

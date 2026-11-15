@@ -5,12 +5,12 @@ import { fileURLToPath } from "node:url";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../src/shared/supabase.ts";
 
 // The project URL and anon key live in src/shared/supabase.ts, which the site,
-// the desktop app and the prerender script import. The two review pages are
-// plain HTML with an inline script and cannot import it, so they carry copies.
+// the desktop app and the prerender script import. The review queue page is
+// plain HTML with an inline script and cannot import it, so it carries a copy.
 // This is what keeps those copies from drifting: rotate the key in one place
 // and this fails until the pages agree.
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const PAGES = ["website/public/review/index.html", "website/public/review/queue/index.html"];
+const PAGES = ["website/public/review/queue/index.html"];
 
 describe("supabase config copies", () => {
   for (const page of PAGES) {

@@ -46,6 +46,9 @@ const AUGMENT_MIN_PICKS = 3;
 
 const PROXY = process.env.HTTPS_PROXY || process.env.https_proxy;
 
+// Real deploy builds and CI fail on any prerender error; local builds do not
+const STRICT = process.env.WORKERS_CI || process.env.CF_PAGES || process.env.PRERENDER_STRICT;
+
 async function fetchJson(url, headers = {}) {
   if (PROXY) {
     // Sandboxed/dev environments route HTTPS through a proxy that node's
@@ -455,9 +458,11 @@ ${PAGE_STYLE}
     writeFileSync(path.join(DIST, "community", "index.html"), communityHtml);
     sitemapUrls.push({ loc: `${SITE}/community/`, freq: "daily", pri: "0.6" });
   } catch (err) {
-    // Fail soft like the rest of this script: without a file the SPA route
-    // still works, it just stays out of the sitemap rather than being
-    // submitted as a duplicate of the homepage.
+    // On a real build this fails the deploy like the rest: without the file
+    // /community/ is served by the app shell with the homepage's canonical tag,
+    // which reads to Google as a duplicate. Locally it is skipped, and stays
+    // out of the sitemap rather than being submitted.
+    if (STRICT) throw err;
     console.warn(`prerender: community page skipped (${err.message})`);
   }
 
@@ -489,7 +494,7 @@ main().catch((err) => {
   // build leaves the last good version live. Local builds stay soft so a flaky
   // network does not block them; CI sets PRERENDER_STRICT, and Workers Builds
   // sets WORKERS_CI.
-  const real = process.env.WORKERS_CI || process.env.CF_PAGES || process.env.PRERENDER_STRICT;
+  const real = STRICT;
   console[real ? "error" : "warn"](
     `prerender ${real ? "FAILED" : "skipped"}: ${err.message}${real ? "" : " - deploying as plain SPA"}`,
   );

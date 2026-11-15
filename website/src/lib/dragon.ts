@@ -49,21 +49,30 @@ function writeCache(key: string, data: unknown) {
   }
 }
 
+// An error page from the CDN is HTML, not JSON, and .json() on it throws a
+// parse error that says nothing about the real problem
+async function getJson(url: string): Promise<any> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function loadChampionData(): Promise<ChampionData> {
   const cached = readCache<ChampionData>("champion-data-v2");
   if (cached) return cached;
 
-  const versions = (await (
-    await fetch("https://ddragon.leagueoflegends.com/api/versions.json")
-  ).json()) as string[];
-  const data = await (
-    await fetch(`https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`)
-  ).json();
+  const versions = (await getJson("https://ddragon.leagueoflegends.com/api/versions.json")) as string[];
+  const data = await getJson(
+    `https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`,
+  );
 
   const out: ChampionData = {};
-  for (const champ of Object.values<any>(data.data)) {
+  for (const champ of Object.values<any>(data.data ?? {})) {
     out[parseInt(champ.key)] = { name: champ.name, tags: champ.tags ?? [] };
   }
+  // Names are what every row and URL is built from; a list with none in it is a
+  // failed load and is not worth keeping for a day
+  if (Object.keys(out).length === 0) throw new Error("champion list was empty");
   writeCache("champion-data-v2", out);
   return out;
 }
@@ -75,9 +84,12 @@ export async function loadAugmentData(): Promise<AugmentData> {
   // The list and the hover text come from different places and neither needs
   // the other, so they overlap. The text is ours, served from this origin.
   const [data, descriptions] = await Promise.all([
-    fetch(
+    getJson(
       "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments.json",
-    ).then((r) => r.json()),
+    )
+      // The stats are already in hand: without names the augments read "Augment
+      // 123" until the next visit, which beats an error page over a CDN blip
+      .catch(() => null),
     fetch(AUGMENT_DESCRIPTIONS_PATH)
       .then((r) => r.json())
       .then((raw) => parseDescriptions(raw)?.descriptions ?? null)
@@ -98,7 +110,9 @@ export async function loadAugmentData(): Promise<AugmentData> {
     }
   }
   if (descriptions) applyDescriptions(out, descriptions);
-  writeCache("augment-data", out);
+  // Kept for a day only when it is a real list: a failed or empty answer would
+  // otherwise leave every augment unnamed in this browser until tomorrow
+  if (Object.keys(out).length > 0) writeCache("augment-data", out);
   return out;
 }
 
@@ -133,11 +147,9 @@ export function loadItemData(): Promise<ItemData> {
     const cached = readCache<ItemData>("item-data-v4");
     if (cached) return cached;
 
-    const data = await (
-      await fetch(
-        "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items.json",
-      )
-    ).json();
+    const data = await getJson(
+      "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items.json",
+    );
 
     const out: ItemData = {};
     if (Array.isArray(data)) {
@@ -150,7 +162,7 @@ export function loadItemData(): Promise<ItemData> {
         };
       }
     }
-    writeCache("item-data-v4", out);
+    if (Object.keys(out).length > 0) writeCache("item-data-v4", out);
     return out;
   })();
   itemPromise.catch(() => {

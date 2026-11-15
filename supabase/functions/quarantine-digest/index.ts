@@ -220,13 +220,19 @@ Deno.serve(async (req: Request) => {
     return json({ sent: false, reason: `resend error ${send.status}`, detail: errText }, 502);
   }
 
-  // Everything pending is covered by this email - the link opens the whole
-  // queue, not a page of it - so nothing is left to ride the next digest.
-  const upd = await supabase
-    .from("quarantine")
-    .update({ notified_at: new Date().toISOString() })
-    .eq("status", "pending")
-    .is("notified_at", null);
+  // Everything this email read is covered by it - the link opens the whole
+  // queue, not a page of it. A game that arrived after the read, or past the
+  // read's limit, is later than the last row read and stays unmarked, so it
+  // still counts as new in the next digest.
+  const readUpTo = rows.length > 0 ? (rows[rows.length - 1] as any).created_at : null;
+  const upd = readUpTo
+    ? await supabase
+        .from("quarantine")
+        .update({ notified_at: new Date().toISOString() })
+        .eq("status", "pending")
+        .is("notified_at", null)
+        .lte("created_at", readUpTo)
+    : { error: null };
   if (upd.error) return json({ sent: true, warning: "failed to mark notified" });
 
   return json({ sent: true, pending: rows.length, new: fresh.length });

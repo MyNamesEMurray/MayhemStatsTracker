@@ -202,13 +202,15 @@ function AugmentExpansion({
   }, [augmentId, patchKey]);
   useEffect(() => {
     let active = true;
-    fetchAugmentPairs(augmentId).then((r) => {
-      if (active) setPairs(r);
-    });
+    fetchAugmentPairs(augmentId, patchKey == null ? undefined : patchKey.split(",").filter(Boolean)).then(
+      (r) => {
+        if (active) setPairs(r);
+      },
+    );
     return () => {
       active = false;
     };
-  }, [augmentId]);
+  }, [augmentId, patchKey]);
 
   const breakdown = useMemo(
     () => (rows ? augmentChampionBreakdown(rows, filters, augmentId).slice(0, 9) : []),

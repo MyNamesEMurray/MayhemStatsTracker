@@ -208,15 +208,26 @@ export interface AugmentPairRow {
 // Every pairing one augment appears in. The rollup stores each pair once with
 // the lower id first, so an augment can be on either side and both have to be
 // asked for.
+const augmentPairs = createPatchRowCache<AugmentPairRow>({
+  view: "augment_pairs",
+  store: localStore,
+});
+
 export async function fetchAugmentPairs(
   augmentId: number,
   patches?: string[],
 ): Promise<AugmentPairRow[]> {
   try {
-    return await fetchAllRows<AugmentPairRow>(
-      "augment_pairs",
-      `select=*&or=(augment_a.eq.${augmentId},augment_b.eq.${augmentId})` +
-        `&order=patch,queue_id,augment_a,augment_b${patchFilter(patches)}`,
+    // Only the patches the page is showing, and kept: opening a row used to
+    // download every patch and queue for the augment and drop them all on close.
+    // A failure rejects and is not cached; it is caught here, outside the cache.
+    return await augmentPairs.load(`augment:${augmentId}`, patches, (p) =>
+      fetchAllRows<AugmentPairRow>(
+        "augment_pairs",
+        `select=*&or=(augment_a.eq.${augmentId},augment_b.eq.${augmentId})` +
+          `&order=patch,queue_id,augment_a,augment_b${patchFilter(p)}`,
+        { count: false },
+      ),
     );
   } catch {
     // The newest rollup of the lot. A deploy that lands before the view does

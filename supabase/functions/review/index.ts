@@ -1,19 +1,18 @@
 // Quarantine review endpoint.
 //
-// Two ways in, one pipeline:
+// One way in: the review queue at mayhemstats.com/review/queue/. It
+// authenticates with an expiring key - sha256(review_secret:admin:exp) - minted
+// by hand and good until the exp it was minted with, and works through the
+// backlog 20 games at a time.
 //
-//   * Per-game links in the digest email. Each link carries an action-bound
-//     key - sha256(review_secret:id:action) - so it authorizes exactly one
-//     action on one game and nothing else. Unchanged.
-//   * A review queue at mayhemstats.com/review/queue/, for working through a
-//     backlog the digest would take weeks to walk 20 games at a time. It
-//     authenticates with an expiring key - sha256(review_secret:admin:exp) -
-//     minted by hand and good until the exp it was minted with.
+// There used to be a second: one approve and one deny link per game in the
+// digest email, each with a key that never expired. The digest now carries only
+// the queue link and nothing was pending when they were removed, so they went.
 //
-// The review_secret never leaves the server in either case. Every action is
-// idempotent: re-running a handled item reports its current status without
-// re-inserting.
+// The review_secret never leaves the server. Every action is idempotent:
+// re-running a handled item reports its current status without re-inserting.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { rowsFor } from "./rows.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -26,15 +25,6 @@ const BULK_MAX = 20;
 // An admin link is a bearer credential in a URL. It can't be revoked short of
 // rotating review_secret, so refuse one minted to live longer than this.
 const MAX_ADMIN_TTL_S = 30 * 24 * 60 * 60;
-
-// Quarantine payloads stored before the year-based switch may carry client
-// build versions ("16.16"); stats tables store Riot's patch names ("26.16").
-function toYearPatch(patch: string): string {
-  const m = String(patch).match(/^(\d+)\.(.+)$/);
-  if (!m) return patch;
-  const major = Number(m[1]);
-  return major >= 15 && major < 25 ? `${major + 10}.${m[2]}` : patch;
-}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -59,78 +49,6 @@ function timingSafeEqual(a: string, b: string): boolean {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
-}
-
-// One quarantined game's payload, flattened into the rows the stats tables
-// take. Throws on a payload too malformed to insert, so a bad row fails alone
-// rather than taking its whole batch with it.
-function rowsFor(row: any) {
-  const g = row.payload;
-  if (!g || !Array.isArray(g.participants) || g.participants.length === 0) {
-    throw new Error("payload has no participants");
-  }
-  const version = toYearPatch(g.gameVersion);
-  const participants: any[] = [];
-  const augments: any[] = [];
-  for (const p of g.participants) {
-    const items = p.items ?? [];
-    participants.push({
-      platform: g.platform,
-      game_id: g.gameId,
-      participant_id: p.participantId,
-      team_id: p.teamId,
-      champion_id: p.championId,
-      win: p.win,
-      kills: p.kills,
-      deaths: p.deaths,
-      assists: p.assists,
-      double_kills: p.doubleKills,
-      triple_kills: p.tripleKills,
-      quadra_kills: p.quadraKills,
-      penta_kills: p.pentaKills,
-      largest_killing_spree: p.largestKillingSpree,
-      total_damage_dealt: p.totalDamageDealt,
-      total_damage_taken: p.totalDamageTaken,
-      gold_earned: p.goldEarned,
-      total_heal: p.totalHeal,
-      item0: items[0],
-      item1: items[1],
-      item2: items[2],
-      item3: items[3],
-      item4: items[4],
-      item5: items[5],
-      item6: items[6],
-    });
-    for (const a of p.augments ?? []) {
-      augments.push({
-        platform: g.platform,
-        game_id: g.gameId,
-        participant_id: p.participantId,
-        slot: a.slot,
-        augment_id: a.augmentId,
-        champion_id: p.championId,
-        win: p.win,
-      });
-    }
-  }
-  return {
-    match: {
-      platform: g.platform,
-      game_id: g.gameId,
-      queue_id: g.queueId,
-      game_version: version,
-      game_duration: g.gameDuration,
-      game_creation: g.gameCreation,
-    },
-    participants,
-    augments,
-    contribution: {
-      contributor_token: row.contributor_token,
-      platform: g.platform,
-      game_id: g.gameId,
-    },
-    patch: version,
-  };
 }
 
 // Insert one batch of approved games. Rows are pooled across the batch so a
@@ -278,7 +196,10 @@ Deno.serve(async (req: Request) => {
           { count: "exact" },
         )
         .eq("status", "pending")
+        // Games from one upload share a created_at; without a second key a page
+        // boundary inside such a group repeats or skips a row
         .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
         .range(offset, offset + limit - 1);
       if (q.error) return json({ error: "query failed" }, 500);
       return json({ pending: q.count ?? q.data.length, items: q.data });
@@ -323,43 +244,5 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // -------------------------------------------------------------------------
-  // Single game, from a digest email link
-  // -------------------------------------------------------------------------
-  const { id } = body ?? {};
-  if (typeof id !== "string" || !UUID_RE.test(id)) return json({ error: "bad id" }, 400);
-  if (action !== "approve" && action !== "deny") return json({ error: "bad action" }, 400);
-
-  const expected = await sha256Hex(`${secret}:${id}:${action}`);
-  if (!timingSafeEqual(expected, key.toLowerCase())) return json({ error: "invalid key" }, 403);
-
-  const row = await supabase.from("quarantine").select("*").eq("id", id).maybeSingle();
-  if (row.error) return json({ error: "lookup failed" }, 500);
-  if (!row.data) return json({ error: "not found" }, 404);
-
-  const game = row.data.payload;
-  const summary = {
-    platform: row.data.platform,
-    gameId: row.data.game_id,
-    patch: game?.gameVersion ? toYearPatch(game.gameVersion) : null,
-    reasons: row.data.reasons,
-  };
-
-  if (row.data.status !== "pending") {
-    return json({ status: row.data.status, already: true, ...summary });
-  }
-
-  if (action === "deny") {
-    const upd = await supabase
-      .from("quarantine")
-      .update({ status: "denied", reviewed_at: new Date().toISOString() })
-      .eq("id", id)
-      .eq("status", "pending");
-    if (upd.error) return json({ error: "update failed" }, 500);
-    return json({ status: "denied", ...summary });
-  }
-
-  const result = await approveRows(supabase, [row.data]);
-  if (result.failed.length > 0) return json({ error: result.failed[0].error }, 500);
-  return json({ status: "approved", ...summary });
+  return json({ error: "bad action" }, 400);
 });

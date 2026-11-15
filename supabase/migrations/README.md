@@ -73,3 +73,20 @@ over five million augment rows and does not finish inside a client timeout.
 `stats.refresh_all()` finds it by catalog lookup and populates it on its next
 pass - a plain refresh while it is unpopulated, concurrent ones after that -
 so a rebuilt environment fills it in without anyone doing anything.
+
+## Applied directly, then recovered, and the November ones
+
+`20260924163340_slow_stats_refresh_drop_unused_indexes` and
+`20260924163614_index_contributions_platform_game_id` were applied to the live
+project without being committed. They are copied here from its ledger. The
+first moves the `refresh-stats-rollups` job from every 30 minutes to every 3
+hours, which supersedes the schedule set in `20260828192500`, and drops two
+indexes the base schema creates.
+
+The `20260915*` files (community summary rollup, release of quarantine slots,
+delete clearing quarantine) were applied through the Supabase tool, which
+records them under the day they were applied, `20261115*`. The names match; the
+version numbers in this directory do not. As with the August renumbering,
+reconcile with `supabase migration repair` rather than by renaming files.
+`community_summary` refreshes itself every five minutes on its own job, apart
+from `refresh_all()`.

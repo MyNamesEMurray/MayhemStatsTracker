@@ -27,6 +27,12 @@ v2.10.0 will. GitHub hides the comment when rendering, and only fixes for
 bugs of our own making need it - a fix for a long-standing bug or something
 on Riot's end is news to everyone, so leave those unmarked.
 
+## v2.14.16 - 2026-11-15
+
+<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
+
+- Port Compare, Community Impact, role filter, auto-widen and tier-list layout to the desktop app
+
 ## v2.14.15 - 2026-11-15
 
 <!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->

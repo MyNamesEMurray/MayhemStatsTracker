@@ -31,6 +31,7 @@ export default function StatBoard<Row, K extends string>({
   empty,
   minWidth = 1000,
   sticky,
+  fitsFrom = "lg",
   topScroll,
   renderAfterRow,
   footnote,
@@ -46,12 +47,13 @@ export default function StatBoard<Row, K extends string>({
   // What the table needs before it is worth scrolling sideways instead of
   // squeezing. Under it the panel scrolls; under 700px the cards take over.
   minWidth?: number;
-  // Freeze the header row while the rows scroll. "page" pins it under the
-  // site's own sticky header, for a board that grows with the page. "panel"
-  // gives the board its own scroll area and pins it there, for a board too
-  // wide to fit and so already scrolling sideways. Off by default: the desktop
-  // app lays its boards out differently.
-  sticky?: "page" | "panel";
+  // Freeze the header row under the site's own sticky header while the page
+  // scrolls. Off by default: the desktop app lays its boards out differently.
+  sticky?: "page";
+  // The window width from which the table fits without scrolling sideways, so
+  // the panel can clip instead of scroll and the header can stick to the page.
+  // Narrower, it scrolls sideways and the header does not freeze.
+  fitsFrom?: "lg" | "xl";
   // A second horizontal scrollbar above the table, shown only while the table
   // is actually scrolling sideways, so it need not be found 50 rows down.
   topScroll?: boolean;
@@ -104,13 +106,13 @@ export default function StatBoard<Row, K extends string>({
         ref={mainRef}
         onScroll={() => follow(mainRef.current, topRef.current)}
         className={`${PANEL} ${
-          sticky === "panel"
-            ? "overflow-auto max-h-[75vh]"
-            : sticky === "page"
-              ? // Clipping instead of scrolling is what lets the header stick to
-                // the page, so it only applies once the table fits unscrolled
-                "overflow-x-auto min-[1100px]:overflow-x-clip"
-              : "overflow-x-auto"
+          sticky === "page"
+            ? // Clipping instead of scrolling is what lets the header stick to
+              // the page, so it only applies once the table fits unscrolled
+              fitsFrom === "xl"
+              ? "overflow-x-auto min-[1700px]:overflow-x-clip"
+              : "overflow-x-auto min-[1100px]:overflow-x-clip"
+            : "overflow-x-auto"
         }`}
       >
         <table

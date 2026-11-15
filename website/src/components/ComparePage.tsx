@@ -275,7 +275,7 @@ export default function ComparePage({
         label: view === "champions" ? "Champion" : "Augment",
         naturalDir: "asc",
         area: "name",
-        width: "w-[170px]",
+        width: "w-[150px]",
         sortValue: (r) => name(r.id),
         render: (r) =>
           view === "champions" ? (
@@ -291,10 +291,10 @@ export default function ComparePage({
       },
       {
         key: "dWin",
-        label: "Win rate change",
-        shortLabel: "Win rate chg",
+        label: "Win chg",
+        cardLabel: "Win chg",
         area: "score",
-        width: "w-[150px]",
+        width: "w-[100px]",
         sortValue: (r) => r.winTo - r.winFrom,
         render: (r) => <Delta value={r.winTo - r.winFrom} unit=" pp" />,
       },
@@ -303,7 +303,7 @@ export default function ComparePage({
         label: "Confidence",
         shortLabel: "Conf.",
         cardLabel: "Confidence",
-        width: "w-[95px]",
+        width: "w-[105px]",
         cellClass: "text-[13px]",
         sortValue: (r) => Math.abs(r.z),
         render: (r) => (
@@ -323,10 +323,10 @@ export default function ComparePage({
       ),
       {
         key: "dPick",
-        label: "Pick rate change",
-        shortLabel: "Pick rate chg",
+        label: "Pick chg",
+        cardLabel: "Pick chg",
         area: "none",
-        width: "w-[150px]",
+        width: "w-[100px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.pickTo - r.pickFrom,
         render: (r) => <Delta value={r.pickTo - r.pickFrom} unit=" pp" />,
@@ -334,16 +334,16 @@ export default function ComparePage({
       ...pair(
         "pick",
         "Pick",
-        "w-[105px]",
+        "w-[110px]",
         (r, w) => (w === "From" ? r.pickFrom : r.pickTo),
         pct,
       ),
       {
         key: "dScore",
-        label: "Score change",
-        shortLabel: "Score chg",
+        label: "Score chg",
+        cardLabel: "Score chg",
         area: "none",
-        width: "w-[130px]",
+        width: "w-[100px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.scoreTo - r.scoreFrom,
         render: (r) => <Delta value={r.scoreTo - r.scoreFrom} unit="" />,
@@ -477,8 +477,9 @@ export default function ComparePage({
             rowKey={(r) => r.id}
             sort={sort}
             onSort={toggle}
-            minWidth={1600}
-            sticky="panel"
+            minWidth={1440}
+            sticky="page"
+            fitsFrom="xl"
             topScroll
             empty={
               from === to

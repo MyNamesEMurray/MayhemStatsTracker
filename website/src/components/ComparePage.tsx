@@ -109,7 +109,7 @@ function join(from: Side[], to: Side[]): Row[] {
 const Z_HIGH = 1.96;
 const Z_MEDIUM = 1.28;
 
-function Confidence({ z }: { z: number }) {
+function Confidence({ z, note }: { z: number; note: string }) {
   const a = Math.abs(z);
   const [label, tone] =
     a >= Z_HIGH
@@ -120,7 +120,7 @@ function Confidence({ z }: { z: number }) {
   return (
     <span
       className={`font-semibold ${tone}`}
-      title={`Win rate change z = ${z.toFixed(2)}. High is about 95% sure it is not luck, Medium about 80%.`}
+      title={`${note}. Win rate change z = ${z.toFixed(2)}. High is about 95% sure it is not luck, Medium about 80%.`}
     >
       {label}
     </span>
@@ -128,7 +128,7 @@ function Confidence({ z }: { z: number }) {
 }
 
 function Delta({ value, unit }: { value: number; unit: string }) {
-  const rounded = Math.round(value * 10) / 10;
+  const rounded = Math.round(value * 100) / 100;
   const tone =
     rounded > 0
       ? "text-lol-win"
@@ -138,7 +138,7 @@ function Delta({ value, unit }: { value: number; unit: string }) {
   return (
     <span className={`font-semibold whitespace-nowrap ${tone}`}>
       {rounded > 0 ? "+" : ""}
-      {rounded.toFixed(1)}
+      {rounded.toFixed(2)}
       {unit}
     </span>
   );
@@ -197,7 +197,8 @@ export default function ComparePage({
   const ready = rows?.key === key ? rows : null;
 
   const joined = useMemo(() => {
-    if (!ready) return [];
+    const none = { rows: [] as Row[], totalFrom: 0, totalTo: 0 };
+    if (!ready) return none;
     const side = (p: string) => ({ patches: new Set([p]), queue });
     if (view === "champions") {
       const mk = (p: string): Side[] =>
@@ -210,7 +211,11 @@ export default function ComparePage({
           assists: c.assists,
           damage: c.damage,
         }));
-      return join(mk(from), mk(to));
+      const a = mk(from);
+      const b = mk(to);
+      // Champion rows count player slots; ten of them make a game
+      const games = (x: Side[]) => Math.round(x.reduce((n, r) => n + r.games, 0) / 10);
+      return { rows: join(a, b), totalFrom: games(a), totalTo: games(b) };
     }
     const mk = (p: string): Side[] =>
       aggregateAugments(ready.augments, side(p)).map((a) => ({
@@ -222,7 +227,10 @@ export default function ComparePage({
         assists: a.assists,
         damage: a.damage,
       }));
-    return join(mk(from), mk(to));
+    const a = mk(from);
+    const b = mk(to);
+    const picks = (x: Side[]) => x.reduce((n, r) => n + r.games, 0);
+    return { rows: join(a, b), totalFrom: picks(a), totalTo: picks(b) };
   }, [ready, view, from, to, queue]);
 
   const name = (id: number) =>
@@ -252,7 +260,7 @@ export default function ComparePage({
         sortValue: (r: Row) => value(r, which),
         render: (r: Row) => show(value(r, which)),
       }));
-    const pct = (n: number) => `${n.toFixed(1)}%`;
+    const pct = (n: number) => `${n.toFixed(2)}%`;
     return [
       {
         key: null,
@@ -286,7 +294,7 @@ export default function ComparePage({
         label: "Win rate change",
         shortLabel: "Win rate chg",
         area: "score",
-        width: "w-[140px] min-[1200px]:w-[175px]",
+        width: "w-[150px]",
         sortValue: (r) => r.winTo - r.winFrom,
         render: (r) => <Delta value={r.winTo - r.winFrom} unit=" pp" />,
       },
@@ -295,15 +303,20 @@ export default function ComparePage({
         label: "Confidence",
         shortLabel: "Conf.",
         cardLabel: "Confidence",
-        width: "w-[110px]",
+        width: "w-[95px]",
         cellClass: "text-[13px]",
         sortValue: (r) => Math.abs(r.z),
-        render: (r) => <Confidence z={r.z} />,
+        render: (r) => (
+          <Confidence
+            z={r.z}
+            note={`${r.gamesFrom.toLocaleString()} to ${r.gamesTo.toLocaleString()} ${view === "champions" ? "games" : "picks"}`}
+          />
+        ),
       },
       ...pair(
         "win",
         "Win",
-        "w-[120px]",
+        "w-[105px]",
         (r, w) => (w === "From" ? r.winFrom : r.winTo),
         pct,
         true,
@@ -313,7 +326,7 @@ export default function ComparePage({
         label: "Pick rate change",
         shortLabel: "Pick rate chg",
         area: "none",
-        width: "w-[140px] min-[1200px]:w-[175px]",
+        width: "w-[150px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.pickTo - r.pickFrom,
         render: (r) => <Delta value={r.pickTo - r.pickFrom} unit=" pp" />,
@@ -321,7 +334,7 @@ export default function ComparePage({
       ...pair(
         "pick",
         "Pick",
-        "w-[120px]",
+        "w-[105px]",
         (r, w) => (w === "From" ? r.pickFrom : r.pickTo),
         pct,
       ),
@@ -330,7 +343,7 @@ export default function ComparePage({
         label: "Score change",
         shortLabel: "Score chg",
         area: "none",
-        width: "w-[120px] min-[1200px]:w-[150px]",
+        width: "w-[130px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.scoreTo - r.scoreFrom,
         render: (r) => <Delta value={r.scoreTo - r.scoreFrom} unit="" />,
@@ -338,24 +351,16 @@ export default function ComparePage({
       ...pair(
         "kda",
         "KDA",
-        "w-[130px]",
+        "w-[105px]",
         (r, w) => (w === "From" ? r.kdaFrom : r.kdaTo),
         (n) => n.toFixed(2),
       ),
       ...pair(
         "dmg",
-        "Damage",
-        "w-[150px]",
+        "Dmg",
+        "w-[105px]",
         (r, w) => (w === "From" ? r.dmgFrom : r.dmgTo),
         formatWhole,
-      ),
-      ...pair(
-        "games",
-        view === "champions" ? "Games" : "Picks",
-        "w-[130px]",
-        (r, w) => (w === "From" ? r.gamesFrom : r.gamesTo),
-        (n) => n.toLocaleString(),
-        true,
       ),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -364,8 +369,8 @@ export default function ComparePage({
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = q
-      ? joined.filter((r) => name(r.id).toLowerCase().includes(q))
-      : joined;
+      ? joined.rows.filter((r) => name(r.id).toLowerCase().includes(q))
+      : joined.rows;
     if (sureOnly) list = list.filter((r) => Math.abs(r.z) >= Z_HIGH);
     return sortRows(list, columns, sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -458,6 +463,13 @@ export default function ComparePage({
         </div>
       )}
       {!error && ready && (
+        <p className="text-xs tabular-nums">
+          {formatPatch(from)}: {joined.totalFrom.toLocaleString()} {view === "champions" ? "games" : "picks"}
+          {" · "}
+          {formatPatch(to)}: {joined.totalTo.toLocaleString()} {view === "champions" ? "games" : "picks"}
+        </p>
+      )}
+      {!error && ready && (
         <div className="cmp-board">
           <StatBoard
             columns={columns}
@@ -465,7 +477,7 @@ export default function ComparePage({
             rowKey={(r) => r.id}
             sort={sort}
             onSort={toggle}
-            minWidth={2000}
+            minWidth={1600}
             empty={
               from === to
                 ? "Pick two different patches to compare."

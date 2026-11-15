@@ -412,6 +412,12 @@ export default function App() {
       if (patchParam !== appliedParam.current && autoWiden) setAutoWiden(null);
       return;
     }
+    // Back on the current patch alone: the widened-range notice no longer
+    // describes what is on screen. The hint below takes its place.
+    if (autoWiden && widenedFor.current === key) {
+      setAutoWiden(null);
+      return;
+    }
     if (widenedFor.current === key || !autoWidenTo) return;
     const range = `${autoWidenTo.from}-${autoWidenTo.to}`;
     widenedFor.current = key;
@@ -420,10 +426,25 @@ export default function App() {
     setParam("patch", range);
   }, [patchParam, autoWidenTo, selectedChampion, queue, setParam, autoWiden]);
 
+  const widenKey = `${selectedChampion ?? "board"}:${queue ?? "all"}`;
+  const showWidenHint =
+    patchParam == null && !autoWiden && autoWidenTo != null && widenedFor.current === widenKey;
+  const applyWiden = () => {
+    if (!autoWidenTo) return;
+    const range = `${autoWidenTo.from}-${autoWidenTo.to}`;
+    appliedParam.current = range;
+    setAutoWiden(autoWidenTo);
+    setParam("patch", range);
+  };
+
   useEffect(() => {
     if (onChampionPage && !wasOnChampion.current) {
       boardPatch.current = patchParam;
-    } else if (onChampionPage && selectedChampion !== lastChampion.current) {
+    } else if (
+      onChampionPage &&
+      lastChampion.current != null &&
+      selectedChampion !== lastChampion.current
+    ) {
       // Cross-linked from one champion to another: the range the last one
       // needed says nothing about this one, so start it over from the board's
       if (patchParam !== boardPatch.current) setParam("patch", boardPatch.current);
@@ -588,6 +609,30 @@ export default function App() {
                 {selectedChampion != null ? "on this champion" : "so far"}.
                 {!autoWiden.reached &&
                   ` Still thin at ${autoWiden.widened.toLocaleString()} - read as directional.`}
+              </p>
+            </div>
+          )}
+
+          {showWidenHint && autoWidenTo && !onCommunityPage && tab !== "compare" && (
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-lol-gold/25 bg-lol-gold/[0.06] px-4 py-3">
+              <InfoIcon
+                width={15}
+                height={15}
+                className="mt-[3px] shrink-0 text-lol-gold"
+                aria-hidden="true"
+              />
+              <p className="text-[13px] leading-relaxed text-lol-text">
+                {formatPatch(autoWidenTo.to)} has{" "}
+                {autoWidenTo.onLatest === 0
+                  ? "no games"
+                  : `only ${autoWidenTo.onLatest} game${autoWidenTo.onLatest === 1 ? "" : "s"}`}{" "}
+                {selectedChampion != null ? "on this champion" : "so far"}, so these numbers are thin.{" "}
+                <button
+                  onClick={applyWiden}
+                  className="text-lol-gold hover:text-lol-gold-light underline underline-offset-2 cursor-pointer"
+                >
+                  Include {formatPatch(autoWidenTo.from)}–{formatPatch(autoWidenTo.to)}
+                </button>
               </p>
             </div>
           )}

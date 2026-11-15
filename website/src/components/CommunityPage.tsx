@@ -21,6 +21,7 @@ const BAR_GAP = 6;
 const LABEL_MIN_SPAN = 1;
 
 const DAY_MS = 86_400_000;
+const COMPACT = new Intl.NumberFormat("en-US", { notation: "compact" });
 // Monday of the week a YYYY-MM-DD day falls in, as YYYY-MM-DD
 function weekStart(day: string): string {
   const t = new Date(day + "T00:00:00Z").getTime();
@@ -195,7 +196,7 @@ export default function CommunityPage() {
                 sizing and each rule lands in the gap before its week's bar */}
             <div className="relative">
               <div
-                className="grid items-end h-28"
+                className="grid items-end h-28 pt-4"
                 style={{
                   gridTemplateColumns: `repeat(${CHART_WEEKS}, minmax(0, 1fr))`,
                   gap: BAR_GAP,
@@ -206,12 +207,16 @@ export default function CommunityPage() {
                   return (
                     <div
                       key={d.day}
-                      className="rounded-t-[3px] bg-lol-gold/70 hover:bg-lol-gold transition-colors min-w-0"
+                      className="relative rounded-t-[3px] bg-lol-gold/70 hover:bg-lol-gold transition-colors min-w-0"
                       style={{
                         height: `${Math.max(d.games > 0 ? 6 : 1.5, (d.games / maxGames) * 100)}%`,
                       }}
                       title={`Week of ${d.day}: ${d.games} game${d.games === 1 ? "" : "s"}${patch ? ` · patch ${patch}` : ""}`}
-                    />
+                    >
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-0.5 whitespace-nowrap text-[10px] text-lol-text">
+                        {COMPACT.format(d.games)}
+                      </span>
+                    </div>
                   );
                 })}
               </div>

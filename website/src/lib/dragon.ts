@@ -9,6 +9,9 @@ import {
 
 export interface ChampionInfo {
   name: string;
+  // Riot's own classes from Data Dragon, primary first. A champion carries one
+  // or two of Fighter, Tank, Mage, Assassin, Support, Marksman.
+  tags: string[];
 }
 
 export interface AugmentInfo {
@@ -47,7 +50,7 @@ function writeCache(key: string, data: unknown) {
 }
 
 export async function loadChampionData(): Promise<ChampionData> {
-  const cached = readCache<ChampionData>("champion-data");
+  const cached = readCache<ChampionData>("champion-data-v2");
   if (cached) return cached;
 
   const versions = (await (
@@ -59,9 +62,9 @@ export async function loadChampionData(): Promise<ChampionData> {
 
   const out: ChampionData = {};
   for (const champ of Object.values<any>(data.data)) {
-    out[parseInt(champ.key)] = { name: champ.name };
+    out[parseInt(champ.key)] = { name: champ.name, tags: champ.tags ?? [] };
   }
-  writeCache("champion-data", out);
+  writeCache("champion-data-v2", out);
   return out;
 }
 

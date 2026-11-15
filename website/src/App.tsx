@@ -496,7 +496,7 @@ export default function App() {
           {/* Wraps at every width: logo + nav + the whole filter group only fit
             one row above ~1080px, and forcing nowrap below that pushed the
             filters off the right edge instead of onto a second line. */}
-          <div className="max-w-[1120px] min-[1500px]:max-w-[1320px] min-[2000px]:max-w-[1760px] mx-auto px-6 flex items-center gap-6 flex-wrap">
+          <div className="max-w-[1120px] min-[1300px]:max-w-[1320px] min-[2000px]:max-w-[1760px] mx-auto px-6 flex items-center gap-6 flex-wrap">
             <a
               href="/"
               onClick={(e) => {
@@ -528,7 +528,7 @@ export default function App() {
             {/* The nav takes the slack instead of the filter group using ml-auto:
               that right-aligns the filters while they share the top row, but
               leaves them left-aligned with everything else once they wrap. */}
-            <nav className="flex gap-1 self-stretch max-w-full overflow-x-auto min-[1081px]:flex-1">
+            <nav className="flex gap-1 self-stretch max-w-full max-[480px]:overflow-x-auto min-[1081px]:flex-1">
               {navTab(
                 "Champions",
                 !onCommunityPage && (tab === "champions" || onChampionPage),
@@ -581,7 +581,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="max-w-[1120px] min-[1500px]:max-w-[1320px] min-[2000px]:max-w-[1760px] mx-auto px-6 pt-7 pb-14">
+        <div className="max-w-[1120px] min-[1300px]:max-w-[1320px] min-[2000px]:max-w-[1760px] mx-auto px-6 pt-7 pb-14">
           {error && (
             <div className="bg-lol-card border border-lol-loss/40 rounded-xl p-5 text-sm">
               <p className="text-lol-loss mb-2">Couldn't load community stats: {error}</p>

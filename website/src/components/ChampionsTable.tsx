@@ -13,6 +13,8 @@ import StatBoard, {
 import { championColumns, type ChampionSortKey } from "../../../src/shared/ui/boardColumns.tsx";
 import { championSlug } from "../lib/slug";
 
+const ROLES = ["Fighter", "Tank", "Mage", "Assassin", "Support", "Marksman"];
+
 export default function ChampionsTable({
   rows,
   filters,
@@ -27,6 +29,7 @@ export default function ChampionsTable({
   onSelectChampion: (championId: number) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [role, setRole] = useState<string | null>(null);
   const { sort, toggle } = useSort<ChampionSortKey>("score");
 
   // Tiers are ranked across ALL champions under the current filter, before
@@ -71,8 +74,26 @@ export default function ChampionsTable({
         getChampionName(championData, c.champion_id).toLowerCase().includes(q),
       );
     }
+    if (role) {
+      filtered = filtered.filter((c) => championData[c.champion_id]?.tags?.includes(role));
+    }
     return sortRows(filtered, columns, sort);
-  }, [list, columns, search, sort, championData]);
+  }, [list, columns, search, role, sort, championData]);
+
+  const hasRoles = Object.values(championData).some((c) => c.tags?.length);
+  const chip = (label: string, value: string | null) => (
+    <button
+      key={label}
+      onClick={() => setRole(value)}
+      className={`px-3 py-1 text-xs font-medium rounded-lg border transition-colors ${
+        role === value
+          ? "border-lol-gold/50 bg-lol-gold/15 text-lol-gold-light"
+          : "border-lol-border bg-lol-card text-lol-text hover:text-lol-gold-light"
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="space-y-3">
@@ -81,6 +102,12 @@ export default function ChampionsTable({
           {sorted.length} champion{sorted.length === 1 ? "" : "s"}
         </span>
         <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
+        {hasRoles && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {chip("All", null)}
+            {ROLES.map((r) => chip(r, r))}
+          </div>
+        )}
         <div className="ml-auto">
           <SearchField
             value={search}
@@ -98,7 +125,7 @@ export default function ChampionsTable({
         onRowClick={(c) => onSelectChampion(c.champion_id)}
         sort={sort}
         onSort={toggle}
-        empty="No champions found"
+        empty={role ? `No ${role} champions match` : "No champions found"}
         footnote={
           <>
             Score is the win rate the record supports, out of 100 - the floor of a 95% confidence

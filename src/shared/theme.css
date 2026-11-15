@@ -268,3 +268,19 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3a4457;
 }
+
+/* Frozen board header. Opt-in per board through StatBoard's `sticky` prop. */
+.stat-board[data-sticky] thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-lol-card);
+  box-shadow: inset 0 -1px var(--color-lol-border);
+}
+@media (min-width: 768px) {
+  /* The site header is sticky from 768px, and its height is measured into
+     --site-header-h because it wraps to a second row at some widths. */
+  .stat-board[data-sticky="page"] thead th {
+    top: var(--site-header-h, 0px);
+  }
+}

@@ -153,6 +153,20 @@ export default function App() {
     loadAdSense();
   }, []);
 
+  // Frozen table headers sit just under this one, and it wraps to a second
+  // row at some widths, so its height is measured rather than assumed
+  const headerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const set = () =>
+      document.documentElement.style.setProperty("--site-header-h", `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Loading runs in stages, because the board only ever renders a few patches
   // and used to download all of them to do it.
   //
@@ -507,7 +521,10 @@ export default function App() {
     <GameDataProvider augments={data?.augmentData ?? NO_AUGMENTS}>
       <div className="min-h-screen">
         {/* Unified chrome: full-width bar, frozen to the top on desktop */}
-        <header className="md:sticky md:top-0 md:z-40 bg-lol-dark/85 backdrop-blur-md border-b border-lol-border/60">
+        <header
+          ref={headerRef}
+          className="md:sticky md:top-0 md:z-40 bg-lol-dark/85 backdrop-blur-md border-b border-lol-border/60"
+        >
           {/* Wraps at every width: logo + nav + the whole filter group only fit
             one row above ~1080px, and forcing nowrap below that pushed the
             filters off the right edge instead of onto a second line. */}

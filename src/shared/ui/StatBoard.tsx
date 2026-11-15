@@ -30,6 +30,7 @@ export default function StatBoard<Row, K extends string>({
   onSort,
   empty,
   minWidth = 1000,
+  sticky,
   renderAfterRow,
   footnote,
   rowClass,
@@ -44,6 +45,12 @@ export default function StatBoard<Row, K extends string>({
   // What the table needs before it is worth scrolling sideways instead of
   // squeezing. Under it the panel scrolls; under 700px the cards take over.
   minWidth?: number;
+  // Freeze the header row while the rows scroll. "page" pins it under the
+  // site's own sticky header, for a board that grows with the page. "panel"
+  // gives the board its own scroll area and pins it there, for a board too
+  // wide to fit and so already scrolling sideways. Off by default: the desktop
+  // app lays its boards out differently.
+  sticky?: "page" | "panel";
   // An expanded row's contents, drawn as a full-width row underneath
   renderAfterRow?: (row: Row) => ReactNode;
   footnote?: ReactNode;
@@ -54,8 +61,19 @@ export default function StatBoard<Row, K extends string>({
 
   return (
     <>
-      <div className={`${PANEL} overflow-x-auto`}>
+      <div
+        className={`${PANEL} ${
+          sticky === "panel"
+            ? "overflow-auto max-h-[75vh]"
+            : sticky === "page"
+              ? // Clipping instead of scrolling is what lets the header stick to
+                // the page, so it only applies once the table fits unscrolled
+                "overflow-x-auto min-[1100px]:overflow-x-clip"
+              : "overflow-x-auto"
+        }`}
+      >
         <table
+          data-sticky={sticky}
           className="stat-board table-fixed w-full border-collapse"
           style={{ minWidth: `${minWidth}px` }}
           data-rank={hasRank ? "yes" : "no"}

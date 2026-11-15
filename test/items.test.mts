@@ -21,9 +21,18 @@ describe("isFinishedItem", () => {
   });
   it("keeps tier-2 boots because they are built from the starter pair", () => {
     assert.equal(
-      isFinishedItem({ id: 3158, priceTotal: 900, to: [3009], from: [1001], categories: ["Boots"] }),
+      isFinishedItem({
+        id: 3158,
+        priceTotal: 900,
+        to: [3009],
+        from: [1001],
+        categories: ["Boots"],
+      }),
       true,
     );
-    assert.equal(isFinishedItem({ id: 1001, priceTotal: 300, to: [3158], categories: ["Boots"] }), false);
+    assert.equal(
+      isFinishedItem({ id: 1001, priceTotal: 300, to: [3158], categories: ["Boots"] }),
+      false,
+    );
   });
 });

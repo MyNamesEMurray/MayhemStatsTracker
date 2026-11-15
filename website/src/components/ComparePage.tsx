@@ -96,12 +96,7 @@ function PinIcon({ filled = false }: { filled?: boolean }) {
 
 function Delta({ value, unit }: { value: number; unit: string }) {
   const rounded = Math.round(value * 100) / 100;
-  const tone =
-    rounded > 0
-      ? "text-lol-win"
-      : rounded < 0
-        ? "text-lol-loss"
-        : "text-lol-text";
+  const tone = rounded > 0 ? "text-lol-win" : rounded < 0 ? "text-lol-loss" : "text-lol-text";
   return (
     <span className={`font-semibold whitespace-nowrap ${tone}`}>
       {rounded > 0 ? "+" : ""}
@@ -212,15 +207,14 @@ export default function ComparePage({
   const togglePin = (id: number) =>
     onChange(
       "pin",
-      (pinned.includes(id) ? pinned.filter((p) => p !== id) : [...pinned, id].slice(0, MAX_PINS)).join(
-        ",",
-      ),
+      (pinned.includes(id)
+        ? pinned.filter((p) => p !== id)
+        : [...pinned, id].slice(0, MAX_PINS)
+      ).join(","),
     );
 
   const name = (id: number) =>
-    view === "champions"
-      ? getChampionName(championData, id)
-      : getAugmentName(augmentData, id);
+    view === "champions" ? getChampionName(championData, id) : getAugmentName(augmentData, id);
 
   const columns = useMemo<BoardColumn<Row, SortKey>[]>(() => {
     const pf = formatPatch(from);
@@ -256,7 +250,9 @@ export default function ComparePage({
                 {/* Always drawn, hidden when not needed, so digits line up */}
                 <span className={s.thin ? "" : "invisible"}>*</span>
               </span>
-              <span className="block text-[10px] leading-[10px] text-lol-text/60 mt-0.5">{s.text}</span>
+              <span className="block text-[10px] leading-[10px] text-lol-text/60 mt-0.5">
+                {s.text}
+              </span>
             </div>
           );
         },
@@ -286,9 +282,7 @@ export default function ComparePage({
               aria-pressed={pinned.includes(r.id)}
               title={pinned.includes(r.id) ? "Unpin" : "Pin to the top of the table"}
               className={`shrink-0 p-0.5 rounded transition-colors ${
-                pinned.includes(r.id)
-                  ? "text-lol-gold"
-                  : "text-lol-text/40 hover:text-lol-gold"
+                pinned.includes(r.id) ? "text-lol-gold" : "text-lol-text/40 hover:text-lol-gold"
               }`}
             >
               <PinIcon filled={pinned.includes(r.id)} />
@@ -356,13 +350,7 @@ export default function ComparePage({
         sortValue: (r) => r.pickTo - r.pickFrom,
         render: (r) => <Delta value={r.pickTo - r.pickFrom} unit=" pp" />,
       },
-      ...pair(
-        "pick",
-        "Pick",
-        "w-[110px]",
-        (r, w) => (w === "From" ? r.pickFrom : r.pickTo),
-        pct,
-      ),
+      ...pair("pick", "Pick", "w-[110px]", (r, w) => (w === "From" ? r.pickFrom : r.pickTo), pct),
       {
         key: "dScore",
         align: "right",
@@ -447,9 +435,7 @@ export default function ComparePage({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
-        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">
-          Patch Comparison
-        </h1>
+        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Patch Comparison</h1>
         <span className="text-xs">
           {formatPatch(from)} to {formatPatch(to)}
         </span>
@@ -467,38 +453,32 @@ export default function ComparePage({
           {patchSelect("to", to)}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 max-[700px]:w-full">
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={sureOnly}
-            onChange={(e) => setSureOnly(e.target.checked)}
-            className="checkbox"
-          />
-          High confidence only
-        </label>
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={showThin}
-            onChange={(e) => setShowThin(e.target.checked)}
-            className="checkbox"
-          />
-          Show under {MIN_SAMPLE} {view === "champions" ? "games" : "picks"}
-        </label>
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={sureOnly}
+              onChange={(e) => setSureOnly(e.target.checked)}
+              className="checkbox"
+            />
+            High confidence only
+          </label>
+          <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showThin}
+              onChange={(e) => setShowThin(e.target.checked)}
+              className="checkbox"
+            />
+            Show under {MIN_SAMPLE} {view === "champions" ? "games" : "picks"}
+          </label>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2 max-[700px]:ml-0 max-[700px]:w-full">
-          <SortControl
-            options={sortOptions(columns)}
-            sort={sort}
-            onSort={toggle}
-          />
+          <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
           <div className="w-48 max-[700px]:w-full">
             <SearchField
               value={search}
               onChange={setSearch}
-              placeholder={
-                view === "champions" ? "Search champion..." : "Search augment..."
-              }
+              placeholder={view === "champions" ? "Search champion..." : "Search augment..."}
             />
           </div>
         </div>
@@ -511,20 +491,19 @@ export default function ComparePage({
       )}
       {!error && from === to && (
         <div className={`${PANEL} p-8 text-center text-sm text-lol-text`}>
-          Pick two different patches to compare. Both dropdowns are on{" "}
-          {formatPatch(from)}.
+          Pick two different patches to compare. Both dropdowns are on {formatPatch(from)}.
         </div>
       )}
       {!error && from !== to && !ready && (
-        <div className="text-center text-lol-text py-20">
-          Loading patches...
-        </div>
+        <div className="text-center text-lol-text py-20">Loading patches...</div>
       )}
       {!error && from !== to && ready && (
         <p className="text-xs tabular-nums">
-          {formatPatch(from)}: {joined.totalFrom.toLocaleString()} {view === "champions" ? "games" : "picks"}
+          {formatPatch(from)}: {joined.totalFrom.toLocaleString()}{" "}
+          {view === "champions" ? "games" : "picks"}
           {" · "}
-          {formatPatch(to)}: {joined.totalTo.toLocaleString()} {view === "champions" ? "games" : "picks"}
+          {formatPatch(to)}: {joined.totalTo.toLocaleString()}{" "}
+          {view === "champions" ? "games" : "picks"}
           {" · "}
           <a href="/about/#patch-comparison" className="text-lol-gold hover:text-lol-gold-light">
             How is this calculated?

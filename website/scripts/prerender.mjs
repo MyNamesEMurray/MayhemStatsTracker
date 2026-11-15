@@ -39,7 +39,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, "../dist");
 const SITE = "https://mayhemstats.com";
 
-
 // Nothing gets printed as a recommendation from fewer picks than this.
 const ITEM_MIN_PICKS = 3;
 const AUGMENT_MIN_PICKS = 3;
@@ -49,7 +48,20 @@ const PROXY = process.env.HTTPS_PROXY || process.env.https_proxy;
 // Real deploy builds and CI fail on any prerender error; local builds do not
 const STRICT = process.env.WORKERS_CI || process.env.CF_PAGES || process.env.PRERENDER_STRICT;
 
+// A page is one of dozens of requests, so a single 5xx or dropped connection is
+// likely on a busy build and would fail it. Three tries, a pause between.
 async function fetchJson(url, headers = {}) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchJsonOnce(url, headers);
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
+
+async function fetchJsonOnce(url, headers) {
   if (PROXY) {
     // Sandboxed/dev environments route HTTPS through a proxy that node's
     // fetch ignores; curl handles it
@@ -75,11 +87,14 @@ const PAGE_BATCH = 8;
 // near-disjoint item pool, and a page headed "ARAM Mayhem" must not quote them;
 // the live site defaults to the same queue.
 function fetchPageRows(view, order, from) {
-  return fetchJson(`${SUPABASE_URL}/rest/v1/${view}?select=*&queue_id=eq.${QUEUE_ID_MAYHEM}&order=${order}`, {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    Range: `${from}-${from + 999}`,
-  });
+  return fetchJson(
+    `${SUPABASE_URL}/rest/v1/${view}?select=*&queue_id=eq.${QUEUE_ID_MAYHEM}&order=${order}`,
+    {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      Range: `${from}-${from + 999}`,
+    },
+  );
 }
 
 async function fetchAllRows(view, order) {
@@ -235,7 +250,13 @@ async function main() {
       itemRows.filter((r) => r.champion_id === id),
       "item_id",
     ).filter((i) => itemName(i.key) && itemFinished[i.key]);
-    const coreBuild = rankForBuild(champItems, (x) => x.picks, (x) => x.wins, ITEM_MIN_PICKS, 6);
+    const coreBuild = rankForBuild(
+      champItems,
+      (x) => x.picks,
+      (x) => x.wins,
+      ITEM_MIN_PICKS,
+      6,
+    );
     const byRarity = (rarity) =>
       rankForBuild(
         champAugments.filter((a) => augments[a.key]?.rarity === rarity),

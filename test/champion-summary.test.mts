@@ -64,7 +64,13 @@ describe("aggregate", () => {
       { item_id: 2, games: 4, wins: 4 },
     ];
     const out = aggregate(rows, "item_id");
-    assert.deepEqual(out.find((r) => r.key === 1), { key: 1, picks: 5, wins: 3 });
-    assert.deepEqual(out.find((r) => r.key === 2), { key: 2, picks: 4, wins: 4 });
+    assert.deepEqual(
+      out.find((r) => r.key === 1),
+      { key: 1, picks: 5, wins: 3 },
+    );
+    assert.deepEqual(
+      out.find((r) => r.key === 2),
+      { key: 2, picks: 4, wins: 4 },
+    );
   });
 });

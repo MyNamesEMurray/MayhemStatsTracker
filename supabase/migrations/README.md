@@ -18,14 +18,14 @@ Every file here is named with the version the live project's
 sees all of them as applied and runs nothing. A few were once numbered by hand
 and did not match; they were renamed on 2026-11-15:
 
-| Renamed from                                         | To (the recorded version)        |
-| ---------------------------------------------------- | -------------------------------- |
-| `20260824000000_materialize_stats_aggregates`        | `20260824073838`                 |
-| `20260824120000_materialize_stats_rollups`           | `20260824075624`                 |
-| `20260824120100_serve_stats_from_rollups`            | `20260824075945`                 |
-| `20260824120200_restrict_refresh_stats_execute`      | `20260824080854`                 |
-| `20260824120300_drop_duplicate_stats_mv`             | `20260824081514`                 |
-| `20260828192500_fix_rollup_refresh_timeout`          | `20260828191720`                 |
+| Renamed from                                          | To (the recorded version)            |
+| ----------------------------------------------------- | ------------------------------------ |
+| `20260824000000_materialize_stats_aggregates`         | `20260824073838`                     |
+| `20260824120000_materialize_stats_rollups`            | `20260824075624`                     |
+| `20260824120100_serve_stats_from_rollups`             | `20260824075945`                     |
+| `20260824120200_restrict_refresh_stats_execute`       | `20260824080854`                     |
+| `20260824120300_drop_duplicate_stats_mv`              | `20260824081514`                     |
+| `20260828192500_fix_rollup_refresh_timeout`           | `20260828191720`                     |
 | `20260915000000` .. `0500` (the six added 2026-11-15) | `20261115010710` .. `20261115030203` |
 
 Two things are not a plain rename:
@@ -36,7 +36,7 @@ Two things are not a plain rename:
   `stats.augment_stats`, which that migration creates - its old number put it
   first and a rebuild from this directory would have failed. A ledger row was
   added for it with the equivalent of `supabase migration repair --status
-  applied 20260824075700`, so a push does not run it again. It drops and
+applied 20260824075700`, so a push does not run it again. It drops and
   rebuilds `augment_totals` and `matchup_coverage` and would take the public
   views down for the duration if it did.
 - The two `20260924*` files were recovered from the ledger as they were; see

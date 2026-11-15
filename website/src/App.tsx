@@ -679,7 +679,8 @@ export default function App() {
                 {autoWidenTo.onLatest === 0
                   ? "no games"
                   : `only ${autoWidenTo.onLatest} game${autoWidenTo.onLatest === 1 ? "" : "s"}`}{" "}
-                {selectedChampion != null ? "on this champion" : "so far"}, so these numbers are thin.{" "}
+                {selectedChampion != null ? "on this champion" : "so far"}, so these numbers are
+                thin.{" "}
                 <button
                   onClick={applyWiden}
                   className="text-lol-gold hover:text-lol-gold-light underline underline-offset-2 cursor-pointer"
@@ -751,19 +752,23 @@ export default function App() {
               </>
             )}
 
-          {data && !onChampionPage && !onCommunityPage && tab === "compare" && patches.length > 0 && (
-            <ComparePage
-              patches={patches}
-              from={params.get("from") ?? patches[1] ?? patches[0]}
-              to={params.get("to") ?? patches[0]}
-              view={params.get("view") === "augments" ? "augments" : "champions"}
-              queue={queue}
-              championData={data.championData}
-              augmentData={data.augmentData}
-              pinned={pinned}
-              onChange={setParam}
-            />
-          )}
+          {data &&
+            !onChampionPage &&
+            !onCommunityPage &&
+            tab === "compare" &&
+            patches.length > 0 && (
+              <ComparePage
+                patches={patches}
+                from={params.get("from") ?? patches[1] ?? patches[0]}
+                to={params.get("to") ?? patches[0]}
+                view={params.get("view") === "augments" ? "augments" : "champions"}
+                queue={queue}
+                championData={data.championData}
+                augmentData={data.augmentData}
+                pinned={pinned}
+                onChange={setParam}
+              />
+            )}
 
           {data && !onChampionPage && !onCommunityPage && tab !== "compare" && (
             <>

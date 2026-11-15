@@ -70,7 +70,9 @@ describe("rowsFor", () => {
     });
   });
   it("throws on a payload with no participants, so one bad row fails alone", () => {
-    assert.throws(() => rowsFor({ contributor_token: "t", payload: { ...payload, participants: [] } }));
+    assert.throws(() =>
+      rowsFor({ contributor_token: "t", payload: { ...payload, participants: [] } }),
+    );
     assert.throws(() => rowsFor({ contributor_token: "t", payload: null }));
   });
 });

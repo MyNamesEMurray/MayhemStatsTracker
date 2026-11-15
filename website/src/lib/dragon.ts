@@ -61,7 +61,9 @@ export async function loadChampionData(): Promise<ChampionData> {
   const cached = readCache<ChampionData>("champion-data-v2");
   if (cached) return cached;
 
-  const versions = (await getJson("https://ddragon.leagueoflegends.com/api/versions.json")) as string[];
+  const versions = (await getJson(
+    "https://ddragon.leagueoflegends.com/api/versions.json",
+  )) as string[];
   const data = await getJson(
     `https://ddragon.leagueoflegends.com/cdn/${versions[0]}/data/en_US/champion.json`,
   );
@@ -135,7 +137,6 @@ export interface ItemInfo {
 }
 
 export type ItemData = Record<number, ItemInfo>;
-
 
 // items.json is a few MB, so it's loaded only when a champion detail view
 // needs it, reduced to id → {name, icon}, and cached like the others.

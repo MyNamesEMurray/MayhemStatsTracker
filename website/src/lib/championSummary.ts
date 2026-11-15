@@ -39,26 +39,26 @@ interface CountRow {
   picks?: number;
   games?: number;
   wins: number;
-  [field: string]: unknown;
+  [field: string]: number | undefined;
 }
 
 // Sum rows that share a key (an item id, an augment id) into one entry each
 export function aggregate(
-  rows: (CountRow & Record<string, number>)[],
+  rows: CountRow[],
   keyField: string,
   extra: string[] = [],
 ): { key: number; picks: number; wins: number; [field: string]: number }[] {
   const map = new Map<number, { key: number; picks: number; wins: number; [f: string]: number }>();
   for (const r of rows) {
-    let e = map.get(r[keyField]);
+    let e = map.get(r[keyField] as number);
     if (!e) {
-      e = { key: r[keyField], picks: 0, wins: 0 };
+      e = { key: r[keyField] as number, picks: 0, wins: 0 };
       for (const f of extra) e[f] = 0;
-      map.set(r[keyField], e);
+      map.set(r[keyField] as number, e);
     }
     e.picks += r.picks ?? r.games ?? 0;
     e.wins += r.wins;
-    for (const f of extra) e[f] += (r[f] as number | undefined) ?? 0;
+    for (const f of extra) e[f] += r[f] ?? 0;
   }
   return Array.from(map.values());
 }

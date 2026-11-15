@@ -27,12 +27,7 @@ import { KDA_RAMP, rampClass } from "../../../src/shared/format.ts";
 
 export { QUEUE_LABELS } from "../../../src/shared/queues.ts";
 export { comparePatches };
-export {
-  formatPatch,
-  parsePatchParam,
-  patchesIn,
-  patchParam,
-} from "../../../src/shared/patch.ts";
+export { formatPatch, parsePatchParam, patchesIn, patchParam } from "../../../src/shared/patch.ts";
 export type { PatchSelection } from "../../../src/shared/patch.ts";
 export { formatWhole, kdaRatio } from "../../../src/shared/format.ts";
 

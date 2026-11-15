@@ -72,8 +72,12 @@ export const COUNT_FIELDS = [
   "pentaKills",
   "largestKillingSpree",
 ] as const;
-export const TOTAL_FIELDS = ["totalDamageDealt", "totalDamageTaken", "goldEarned", "totalHeal"] as const;
-
+export const TOTAL_FIELDS = [
+  "totalDamageDealt",
+  "totalDamageTaken",
+  "goldEarned",
+  "totalHeal",
+] as const;
 
 export function isInt(v: unknown, min: number, max: number): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;

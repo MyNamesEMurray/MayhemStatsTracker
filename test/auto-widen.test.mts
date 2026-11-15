@@ -51,7 +51,12 @@ describe("showsWidenHint", () => {
 });
 
 describe("pageScope", () => {
-  const page = { onChampionPage: true, wasOnChampion: true, selectedChampion: 44, lastChampion: 44 };
+  const page = {
+    onChampionPage: true,
+    wasOnChampion: true,
+    selectedChampion: 44,
+    lastChampion: 44,
+  };
   it("remembers the board's patch on entering a champion page", () => {
     assert.deepEqual(pageScope({ ...page, wasOnChampion: false }), { type: "enter" });
   });

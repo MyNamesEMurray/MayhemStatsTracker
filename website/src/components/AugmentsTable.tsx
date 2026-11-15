@@ -202,11 +202,12 @@ function AugmentExpansion({
   }, [augmentId, patchKey]);
   useEffect(() => {
     let active = true;
-    fetchAugmentPairs(augmentId, patchKey == null ? undefined : patchKey.split(",").filter(Boolean)).then(
-      (r) => {
-        if (active) setPairs(r);
-      },
-    );
+    fetchAugmentPairs(
+      augmentId,
+      patchKey == null ? undefined : patchKey.split(",").filter(Boolean),
+    ).then((r) => {
+      if (active) setPairs(r);
+    });
     return () => {
       active = false;
     };

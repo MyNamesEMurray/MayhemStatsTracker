@@ -1,6 +1,6 @@
 # Migrations
 
-Eighteen migrations have been applied to the community stats project. Until
+Twenty-eight migrations have been applied to the community stats project. Until
 2026-08-28 only six of them were in this repository, and the seven missing ones
 included the base schema: every table, every foreign key, the row level
 security posture, and the withdrawal function. They existed only inside the
@@ -11,29 +11,40 @@ They have now been recovered by reading
 committed here verbatim except where noted below. The three from 2026-08-28
 were written here as they were applied.
 
-## Two things to know before running anything
+## Versions match the live ledger
 
-**The recovered files carry their real applied versions; the six that were
-already here do not.** They were renumbered at some point, so the timestamps in
-their filenames do not match the versions the database recorded:
+Every file here is named with the version the live project's
+`supabase_migrations.schema_migrations` recorded for it, so `supabase db push`
+sees all of them as applied and runs nothing. A few were once numbered by hand
+and did not match; they were renamed on 2026-11-15:
 
-| File in this directory                              | Version the database recorded  |
-| --------------------------------------------------- | ------------------------------ |
-| `20260824000000_materialize_stats_aggregates.sql`   | `20260824073838`               |
-| `20260824020000_stats_rollups.sql`                  | (folded into `20260824075624`) |
-| `20260824120000_materialize_stats_rollups.sql`      | `20260824075624`               |
-| `20260824120100_serve_stats_from_rollups.sql`       | `20260824075945`               |
-| `20260824120200_restrict_refresh_stats_execute.sql` | `20260824080854`               |
-| `20260824120300_drop_duplicate_stats_mv.sql`        | `20260824081514`               |
+| Renamed from                                         | To (the recorded version)        |
+| ---------------------------------------------------- | -------------------------------- |
+| `20260824000000_materialize_stats_aggregates`        | `20260824073838`                 |
+| `20260824120000_materialize_stats_rollups`           | `20260824075624`                 |
+| `20260824120100_serve_stats_from_rollups`            | `20260824075945`                 |
+| `20260824120200_restrict_refresh_stats_execute`      | `20260824080854`                 |
+| `20260824120300_drop_duplicate_stats_mv`             | `20260824081514`                 |
+| `20260828192500_fix_rollup_refresh_timeout`          | `20260828191720`                 |
+| `20260915000000` .. `0500` (the six added 2026-11-15) | `20261115010710` .. `20261115030203` |
 
-They are also longer than what the database stored, because they were
-rewritten with fuller comments. The SQL is equivalent; the prose is better
-here.
+Two things are not a plain rename:
 
-The consequence is that `supabase db push` would try to apply those six again,
-since it matches on version. Reconcile with `supabase migration repair
---status applied <version>` for each, rather than by renaming files, because
-repair is what updates the database's own ledger.
+- **`20260824075700_stats_rollups`** was applied to the project outside the
+  ledger (its objects are live), so it had no recorded version. It was
+  renumbered to sort after `20260824075624`, because it indexes
+  `stats.augment_stats`, which that migration creates - its old number put it
+  first and a rebuild from this directory would have failed. A ledger row was
+  added for it with the equivalent of `supabase migration repair --status
+  applied 20260824075700`, so a push does not run it again. It drops and
+  rebuilds `augment_totals` and `matchup_coverage` and would take the public
+  views down for the duration if it did.
+- The two `20260924*` files were recovered from the ledger as they were; see
+  below.
+
+The files from before 2026-08-28 are longer than what the database stored,
+because they were rewritten with fuller comments. The SQL is equivalent; the
+prose is better here.
 
 **`supabase db pull` will write secrets into a file.** The
 `quarantine_review_pipeline` migration seeded `admin_config` with live values
@@ -74,19 +85,16 @@ over five million augment rows and does not finish inside a client timeout.
 pass - a plain refresh while it is unpopulated, concurrent ones after that -
 so a rebuilt environment fills it in without anyone doing anything.
 
-## Applied directly, then recovered, and the November ones
+## Applied directly, then recovered
 
 `20260924163340_slow_stats_refresh_drop_unused_indexes` and
 `20260924163614_index_contributions_platform_game_id` were applied to the live
 project without being committed. They are copied here from its ledger. The
 first moves the `refresh-stats-rollups` job from every 30 minutes to every 3
-hours, which supersedes the schedule set in `20260828192500`, and drops two
+hours, which supersedes the schedule set in `20260828191720`, and drops two
 indexes the base schema creates.
 
-The `20260915*` files (community summary rollup, release of quarantine slots,
-delete clearing quarantine) were applied through the Supabase tool, which
-records them under the day they were applied, `20261115*`. The names match; the
-version numbers in this directory do not. As with the August renumbering,
-reconcile with `supabase migration repair` rather than by renaming files.
-`community_summary` refreshes itself every five minutes on its own job, apart
-from `refresh_all()`.
+The `20261115*` files (community summary rollup and its views, release of
+quarantine slots, delete clearing quarantine, a note on `ingest_games`) were
+applied through the Supabase tool. `community_summary` refreshes itself every
+five minutes on its own job, apart from `refresh_all()`.

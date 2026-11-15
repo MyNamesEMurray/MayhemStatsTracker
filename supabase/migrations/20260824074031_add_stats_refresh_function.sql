@@ -1,4 +1,4 @@
--- Superseded by stats.refresh_all() in 20260824120200, which discovers the
+-- Superseded by stats.refresh_all() in 20260824080854, which discovers the
 -- materialized views by catalog lookup instead of naming them. Kept because
 -- it was applied, and the history should say what actually ran.
 create or replace function public.refresh_stats() returns void

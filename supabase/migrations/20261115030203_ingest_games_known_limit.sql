@@ -9,4 +9,4 @@
 -- for a case this rare.
 
 comment on function public.ingest_games(uuid, jsonb, integer, integer, integer) is
-  'shortcut: the daily-cap check counts games already stored, so a retried batch can read as over the limit. See migration 20260915000500.';
+  'shortcut: the daily-cap check counts games already stored, so a retried batch can read as over the limit. See migration ingest_games_known_limit.';

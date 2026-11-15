@@ -1,4 +1,4 @@
--- Repoint the public API surface at the rollups from 20260824120000 and put
+-- Repoint the public API surface at the rollups from 20260824075624 and put
 -- their rebuild on a schedule. Column names, types and ordering are unchanged,
 -- so the website, the prerender script and the desktop app all keep working
 -- against the same view names - they just stop paying for the aggregation.

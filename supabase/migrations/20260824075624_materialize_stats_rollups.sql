@@ -3,7 +3,7 @@
 -- anon's 3s statement timeout, and the site started serving HTTP 500s
 -- ("canceling statement due to statement timeout") for champion_stats and
 -- augment_stats. This moves the aggregation into materialized views that a
--- scheduled job rebuilds; 20260824120100 repoints the public views at them.
+-- scheduled job rebuilds; 20260824075945 repoints the public views at them.
 
 create schema if not exists stats;
 revoke all on schema stats from public;

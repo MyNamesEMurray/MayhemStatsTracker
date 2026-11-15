@@ -86,7 +86,6 @@ export default function Compare() {
             How is this calculated?
           </button>
         }
-        sticky="panel"
         onChange={setParam}
       />
     </div>

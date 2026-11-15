@@ -21,7 +21,7 @@ import StatBoard, {
 } from "../../../src/shared/ui/StatBoard.tsx";
 
 type View = "champions" | "augments";
-type SortKey = "name" | "dWin" | "dPick" | "dScore" | "winTo" | "games";
+type SortKey = "name" | "sig" | "dWin" | "dPick" | "dScore" | "winTo" | "games";
 
 interface Row {
   id: number;
@@ -33,6 +33,8 @@ interface Row {
   pickTo: number;
   scoreFrom: number;
   scoreTo: number;
+  // Two-proportion z of the win rate change. |z| >= 1.96 is the usual 95% bar.
+  z: number;
 }
 
 interface Side {
@@ -51,7 +53,10 @@ function join(from: Side[], to: Side[]): Row[] {
   for (const t of to) {
     const f = before.get(t.id);
     if (!f || f.games < MIN_SAMPLE || t.games < MIN_SAMPLE) continue;
+    const pooled = (f.wins + t.wins) / (f.games + t.games);
+    const se = Math.sqrt(pooled * (1 - pooled) * (1 / f.games + 1 / t.games));
     rows.push({
+      z: se > 0 ? (t.wins / t.games - f.wins / f.games) / se : 0,
       id: t.id,
       gamesFrom: f.games,
       gamesTo: t.games,
@@ -64,6 +69,27 @@ function join(from: Side[], to: Side[]): Row[] {
     });
   }
   return rows;
+}
+
+const Z_HIGH = 1.96;
+const Z_MEDIUM = 1.28;
+
+function Confidence({ z }: { z: number }) {
+  const a = Math.abs(z);
+  const [label, tone] =
+    a >= Z_HIGH
+      ? ["High", "text-lol-win"]
+      : a >= Z_MEDIUM
+        ? ["Medium", "text-lol-gold"]
+        : ["Low", "text-lol-text/60"];
+  return (
+    <span
+      className={`font-semibold ${tone}`}
+      title={`Win rate change z = ${z.toFixed(2)}. High is about 95% sure it is not luck, Medium about 80%.`}
+    >
+      {label}
+    </span>
+  );
 }
 
 function Delta({ value, unit }: { value: number; unit: string }) {
@@ -115,6 +141,7 @@ export default function ComparePage({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sureOnly, setSureOnly] = useState(false);
   const { sort, toggle } = useSort<SortKey>("dWin");
 
   const key = `${from}|${to}`;
@@ -189,6 +216,16 @@ export default function ComparePage({
         render: (r) => <Delta value={r.winTo - r.winFrom} unit=" pp" />,
       },
       {
+        key: "sig",
+        label: "Confidence",
+        shortLabel: "Conf.",
+        cardLabel: "Confidence",
+        width: "w-[110px]",
+        cellClass: "text-[13px]",
+        sortValue: (r) => Math.abs(r.z),
+        render: (r) => <Confidence z={r.z} />,
+      },
+      {
         key: "winTo",
         label: "Win rate",
         width: "w-[170px]",
@@ -231,10 +268,11 @@ export default function ComparePage({
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = q ? joined.filter((r) => name(r.id).toLowerCase().includes(q)) : joined;
+    let list = q ? joined.filter((r) => name(r.id).toLowerCase().includes(q)) : joined;
+    if (sureOnly) list = list.filter((r) => Math.abs(r.z) >= Z_HIGH);
     return sortRows(list, columns, sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined, search, sort, columns]);
+  }, [joined, search, sureOnly, sort, columns]);
 
   const patchSelect = (which: "from" | "to", value: string) => (
     <select
@@ -284,6 +322,15 @@ export default function ComparePage({
           <span>to</span>
           {patchSelect("to", to)}
         </div>
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={sureOnly}
+            onChange={(e) => setSureOnly(e.target.checked)}
+            className="accent-[var(--color-lol-gold)]"
+          />
+          High confidence only
+        </label>
         <div className="ml-auto flex flex-wrap items-center gap-2 max-[640px]:ml-0 max-[640px]:w-full">
           <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
           <SearchField
@@ -319,6 +366,9 @@ export default function ComparePage({
           footnote={
             <>
               Changes are {formatPatch(to)} minus {formatPatch(from)}, in percentage points (pp).
+              Confidence tests whether the win rate change could just be luck, given how many games
+              each patch has: High is about 95% sure it is real, Medium about 80%, Low means a thin
+              or noisy sample. With this many rows, a few High ones will still be luck.
               Only {view === "champions" ? "champions" : "augments"} with at least {MIN_SAMPLE}{" "}
               {view === "champions" ? "games" : "picks"} on both patches are shown, since smaller
               samples swing on luck. Score change is the shift in the confidence-floored score used

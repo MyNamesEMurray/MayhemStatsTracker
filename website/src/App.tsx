@@ -719,7 +719,7 @@ export default function App() {
                 }}
                 className="hover:text-lol-gold"
               >
-                Community impact
+                Community Impact
               </a>
               <a href="/privacy/" className="hover:text-lol-gold">
                 Privacy

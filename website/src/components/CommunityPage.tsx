@@ -162,7 +162,7 @@ export default function CommunityPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
-        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Community impact</h1>
+        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Community Impact</h1>
         {since && <span className="text-xs">counting since {since}</span>}
       </div>
       <p className="text-[13px] mb-4 max-w-[64ch]">

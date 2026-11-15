@@ -504,7 +504,7 @@ ${PAGE_STYLE}
     <div id="root"></div>
     <section id="prerender">
       <p><a href="/">← MayhemStats</a></p>
-      <h1>Community impact</h1>
+      <h1>Community Impact</h1>
       <p>Riot's public API doesn't expose ARAM Mayhem match data, so every number on this site is crowdsourced: players run the free <a href="/download/">MayhemStats Tracker</a>, opt in, and pool their games anonymously.</p>
       <h2>The running total</h2>
       <ul>

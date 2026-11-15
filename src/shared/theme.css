@@ -344,6 +344,12 @@ body {
   .stat-board .board-pinned-card {
     display: none;
   }
+  /* One row height for every board. A table row's height is a minimum, so
+     this holds the icon-and-name rows level without clipping anything taller. */
+  .stat-board tbody tr:not(.board-expansion),
+  .stat-board thead tr.board-pinned {
+    height: 3rem;
+  }
 }
 @media (max-width: 700px) {
   .stat-board .board-pinned {

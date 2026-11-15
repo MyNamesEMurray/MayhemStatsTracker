@@ -234,7 +234,7 @@ export default function ChampionDetail({
       {/* Hero */}
       <div className={`${PANEL} p-5`}>
         <div className="flex flex-wrap items-center gap-4">
-          <span className="rounded-full ring-2 ring-lol-gold/40 shrink-0 leading-none">
+          <span className="rounded-[14px] ring-2 ring-lol-gold/40 shrink-0 leading-none">
             <ChampionIcon championId={championId} size={64} />
           </span>
           <div className="min-w-0">

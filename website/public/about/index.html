@@ -116,6 +116,30 @@
         </li>
       </ul>
 
+      <h2 id="patch-comparison">How patch comparison works</h2>
+      <p>
+        The Compare tab shows each champion's or augment's stats on an older patch beside a newer
+        one. Changes are the newer patch minus the older one, in percentage points (pp): a win rate
+        moving from 50.00% to 52.50% is +2.50 pp.
+      </p>
+      <ul>
+        <li>
+          <strong>Confidence</strong> tests whether the win rate change could just be luck, given
+          how many games each patch has. High means about 95% sure it is real, Medium about 80%,
+          and Low means a thin or noisy sample. With a few hundred rows, a handful of High results
+          will still be luck.
+        </li>
+        <li>
+          <strong>Sample floor.</strong> Rows need at least 20 games (or picks, for augments) on
+          both patches, since smaller samples swing on luck. The "Show under 20" option includes
+          them anyway; expect them to read Low.
+        </li>
+        <li>
+          <strong>Score change</strong> is the shift in the confidence-floored Score used by the
+          tier lists, described above.
+        </li>
+      </ul>
+
       <h2>Ideal builds</h2>
       <p>
         Each champion's page ranks items and augments by the same Score, requiring a minimum sample

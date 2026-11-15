@@ -307,7 +307,7 @@ export default function ComparePage({
         label: view === "champions" ? "Champion" : "Augment",
         naturalDir: "asc",
         area: "name",
-        width: "w-[175px]",
+        width: "w-[200px]",
         sortValue: (r) => name(r.id),
         render: (r) => (
           <div className="flex items-center gap-2">
@@ -327,12 +327,18 @@ export default function ComparePage({
             {view === "champions" ? (
               <div className="flex items-center gap-2.5 min-w-0">
                 <ChampionIcon championId={r.id} size={28} />
-                <span className="text-[13px] text-lol-text-bright whitespace-nowrap">
+                <span
+                  className={`text-lol-text-bright ${
+                    name(r.id).length > 14
+                      ? "text-[11px] leading-[1.1] line-clamp-2"
+                      : "text-[13px] whitespace-nowrap truncate"
+                  }`}
+                >
                   {name(r.id)}
                 </span>
               </div>
             ) : (
-              <AugmentIcon augmentId={r.id} size={26} showName />
+              <AugmentIcon augmentId={r.id} size={26} showName fit />
             )}
           </div>
         ),
@@ -550,6 +556,10 @@ export default function ComparePage({
           {formatPatch(from)}: {joined.totalFrom.toLocaleString()} {view === "champions" ? "games" : "picks"}
           {" · "}
           {formatPatch(to)}: {joined.totalTo.toLocaleString()} {view === "champions" ? "games" : "picks"}
+          {" · "}
+          <a href="/about/#patch-comparison" className="text-lol-gold hover:text-lol-gold-light">
+            How is this calculated?
+          </a>
         </p>
       )}
       {!error && from !== to && ready && (
@@ -560,7 +570,7 @@ export default function ComparePage({
             rowKey={(r) => r.id}
             sort={sort}
             onSort={toggle}
-            minWidth={1470}
+            minWidth={1495}
             pinnedRows={pinnedRows}
             sticky="page"
             fitsFrom="xl"
@@ -569,21 +579,6 @@ export default function ComparePage({
               showThin
                 ? "Nothing appears on both patches yet."
                 : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
-            }
-            footnote={
-              <>
-                Changes are {formatPatch(to)} minus {formatPatch(from)}, in
-                percentage points (pp). Confidence tests whether the win rate
-                change could just be luck, given how many games each patch has:
-                High is about 95% sure it is real, Medium about 80%, Low means a
-                thin or noisy sample. With this many rows, a few High ones will
-                still be luck.{" "}
-                {showThin
-                  ? `Rows with fewer than ${MIN_SAMPLE} ${view === "champions" ? "games" : "picks"} on a patch are included and swing on luck.`
-                  : `Only ${view === "champions" ? "champions" : "augments"} with at least ${MIN_SAMPLE} ${view === "champions" ? "games" : "picks"} on both patches are shown, since smaller samples swing on luck.`} Score
-                change is the shift in the confidence-floored score used by the
-                tier lists.
-              </>
             }
           />
         </div>

@@ -108,12 +108,18 @@ export function fetchChampionStats(patches?: string[]): Promise<ChampionStatRow[
   );
 }
 
+// Throws on failure. Callers that can show an error use this one, and callers
+// that cannot afford to - the tier lists - use fetchAugmentTotals below.
+export function fetchAugmentTotalsStrict(patches?: string[]): Promise<AugmentTotalRow[]> {
+  return fetchAllRows<AugmentTotalRow>(
+    "augment_totals",
+    `select=*&order=patch,queue_id,augment_id${patchFilter(patches)}`,
+  );
+}
+
 export async function fetchAugmentTotals(patches?: string[]): Promise<AugmentTotalRow[]> {
   try {
-    return await fetchAllRows<AugmentTotalRow>(
-      "augment_totals",
-      `select=*&order=patch,queue_id,augment_id${patchFilter(patches)}`,
-    );
+    return await fetchAugmentTotalsStrict(patches);
   } catch (err) {
     // The rollup is one migration behind the client during a deploy. An empty
     // augment tab is a bad half-hour; taking the champion tier list down with
@@ -141,8 +147,11 @@ export function fetchChampionStatsFor(patches: string[]): Promise<ChampionStatRo
   return championStatsCache.load("compare", patches, fetchChampionStats);
 }
 
+// The strict fetch, so a failure rejects and is not cached. The forgiving one
+// would store an empty list for ten minutes and Compare would say there is no
+// data until it expired.
 export function fetchAugmentTotalsFor(patches: string[]): Promise<AugmentTotalRow[]> {
-  return augmentTotalsCache.load("compare", patches, fetchAugmentTotals);
+  return augmentTotalsCache.load("compare", patches, fetchAugmentTotalsStrict);
 }
 
 // Everything below is per-champion or per-augment, fetched when a page that

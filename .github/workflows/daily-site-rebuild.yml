@@ -23,4 +23,4 @@ jobs:
             echo "::error::No CLOUDFLARE_PAGES_DEPLOY_HOOK secret set, so nothing was rebuilt."
             exit 1
           fi
-          curl -sS -X POST "$HOOK"
+          curl -sSf -X POST "$HOOK"

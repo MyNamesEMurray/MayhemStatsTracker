@@ -69,6 +69,10 @@ describe("parsePins", () => {
   it("keeps order and drops repeats and anything that is not a whole number", () => {
     assert.deepEqual(parsePins("44,412,44,abc,,-3,1.5"), [44, 412]);
   });
+  it("keeps at most ten, so a long link cannot bury the table under pinned rows", () => {
+    const many = Array.from({ length: 40 }, (_, i) => i + 1).join(",");
+    assert.deepEqual(parsePins(many), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
   it("reads a missing parameter as no pins", () => {
     assert.deepEqual(parsePins(null), []);
     assert.deepEqual(parsePins(""), []);

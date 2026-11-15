@@ -78,12 +78,16 @@ export function confidence(z: number): "High" | "Medium" | "Low" {
 // The ?pin= parameter: ids in the order they were pinned. Anything that is not
 // a whole number is dropped, and so is a repeat, since a repeated id would draw
 // the same row twice.
+// At most MAX_PINS: every pinned row sits in the frozen header, and enough of
+// them would make it taller than the screen, leaving the table out of reach.
+export const MAX_PINS = 10;
+
 export function parsePins(raw: string | null | undefined): number[] {
   const ids = (raw ?? "")
     .split(",")
     .filter((s) => /^\d+$/.test(s))
     .map(Number);
-  return [...new Set(ids)];
+  return [...new Set(ids)].slice(0, MAX_PINS);
 }
 
 // Rank every row the filters kept, pinned ones included, so a pinned row keeps

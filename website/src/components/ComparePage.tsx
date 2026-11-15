@@ -18,6 +18,7 @@ import {
 import {
   confidence,
   join,
+  MAX_PINS,
   splitPinned,
   withRanks,
   Z_HIGH,
@@ -67,7 +68,7 @@ function Confidence({ z, note }: { z: number; note: string }) {
   return (
     <span
       className={`font-semibold ${tone}`}
-      title={`${note}. Win rate change z = ${z.toFixed(2)}. High is about 95% sure it is not luck, Medium about 80%.`}
+      title={`${note}. Win rate change z = ${z.toFixed(2)}. Judged row by row: High is about 95% sure this one is not luck, Medium about 80%. With this many rows, a few High ones are still luck.`}
     >
       {label}
     </span>
@@ -167,7 +168,7 @@ export default function ComparePage({
     return () => {
       active = false;
     };
-  }, [from, to, key]);
+  }, [from, to]);
 
   const ready = rows?.key === key ? rows : null;
 
@@ -209,7 +210,12 @@ export default function ComparePage({
   }, [ready, view, from, to, queue]);
 
   const togglePin = (id: number) =>
-    onChange("pin", (pinned.includes(id) ? pinned.filter((p) => p !== id) : [...pinned, id]).join(","));
+    onChange(
+      "pin",
+      (pinned.includes(id) ? pinned.filter((p) => p !== id) : [...pinned, id].slice(0, MAX_PINS)).join(
+        ",",
+      ),
+    );
 
   const name = (id: number) =>
     view === "champions"

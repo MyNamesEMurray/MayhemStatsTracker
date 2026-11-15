@@ -21,7 +21,11 @@ import { fileURLToPath } from "url";
 // Run with --experimental-strip-types (see package.json) so these shared
 // TypeScript modules load without a build step
 import { isFinishedItem } from "../../src/shared/items.ts";
+import { comparePatches, formatPatch } from "../../src/shared/patch.ts";
+import { QUEUE_ID_MAYHEM } from "../../src/shared/queues.ts";
+import { rankForBuild, score } from "../../src/shared/score.ts";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../src/shared/supabase.ts";
+import { championSlug } from "../src/lib/slug.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, "../dist");
@@ -60,8 +64,11 @@ async function fetchJson(url, headers = {}) {
 // `order` names a unique key of the view, which the rollups are indexed on.
 const PAGE_BATCH = 8;
 
+// ARAM Mayhem only. Mayhem Classic games sit in the same views with their own
+// near-disjoint item pool, and a page headed "ARAM Mayhem" must not quote them;
+// the live site defaults to the same queue.
 function fetchPageRows(view, order, from) {
-  return fetchJson(`${SUPABASE_URL}/rest/v1/${view}?select=*&order=${order}`, {
+  return fetchJson(`${SUPABASE_URL}/rest/v1/${view}?select=*&queue_id=eq.${QUEUE_ID_MAYHEM}&order=${order}`, {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     Range: `${from}-${from + 999}`,
@@ -81,35 +88,6 @@ async function fetchAllRows(view, order) {
     if (done) return out;
   }
 }
-
-// Mirrors src/lib/slug.ts - keep in sync
-const championSlug = (name) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-// Mirrors src/lib/stats.ts score(): the win rate a record supports, out of
-// 100 - the floor of a 95% Wilson interval. Everything ranks by it, so a 5-0
-// item lands below a 60% one with hundreds of games.
-const score = (wins, games) => {
-  if (games <= 0) return 0;
-  const p = wins / games;
-  const z = 1.96;
-  const z2 = z * z;
-  const centre = p + z2 / (2 * games);
-  const margin = z * Math.sqrt((p * (1 - p) + z2 / (4 * games)) / games);
-  return (100 * (centre - margin)) / (1 + z2 / games);
-};
-
-// Mirrors src/lib/stats.ts formatPatch(): stored patches are year-based
-// ("26.16"); shifting stray client-style values ("16.16") is idempotent
-const formatPatch = (patch) => {
-  const m = patch.match(/^(\d+)\.(.+)$/);
-  if (!m) return patch;
-  const major = Number(m[1]);
-  return major >= 15 && major < 25 ? `${major + 10}.${m[2]}` : patch;
-};
 
 const esc = (s) =>
   String(s)
@@ -136,16 +114,6 @@ function relative(value, base) {
   const diff = ((value - base) / base) * 100;
   if (Math.abs(diff) < 8) return "in line with the mode average";
   return `${Math.round(Math.abs(diff))}% ${diff > 0 ? "above" : "below"} the mode average`;
-}
-
-// Mirrors src/lib/stats.ts rankForBuild: a workable sample AND a record that
-// isn't losing, ranked by confidence score. An item that has never won is not a
-// recommendation, however many times it was built.
-function rankForBuild(list, minPicks, count) {
-  return list
-    .filter((x) => x.picks >= minPicks && x.wins * 2 >= x.picks)
-    .sort((a, b) => score(b.wins, b.picks) - score(a.wins, a.picks))
-    .slice(0, count);
 }
 
 function aggregate(rows, keyField, extra = []) {
@@ -206,9 +174,8 @@ async function main() {
     }
   }
   const itemNames = {};
-  // Mirrors src/lib/dragon.ts: components are what a finished item was on the
-  // way to, so they stay out of the build lists. Manamune and Archangel's
-  // Staff transform rather than build into anything, so they stay in.
+  // Components stay out of the build lists; the rule is shared with the site
+  // and the app in src/shared/items.ts.
   const itemFinished = {};
   if (Array.isArray(itemsJson))
     for (const it of itemsJson) {
@@ -230,11 +197,7 @@ async function main() {
     .join("\n    ");
 
   const patches = [...new Set(championRows.map((r) => r.patch))];
-  const latestPatch = patches.sort((a, b) => {
-    const [am, an] = a.split(".").map(Number);
-    const [bm, bn] = b.split(".").map(Number);
-    return bm - am || bn - an;
-  })[0];
+  const latestPatch = patches.sort((a, b) => comparePatches(b, a))[0];
   const buildDate = new Date().toISOString().slice(0, 10);
 
   const perChampion = new Map();
@@ -298,10 +261,12 @@ async function main() {
       itemRows.filter((r) => r.champion_id === id),
       "item_id",
     ).filter((i) => itemName(i.key) && itemFinished[i.key]);
-    const coreBuild = rankForBuild(champItems, ITEM_MIN_PICKS, 6);
+    const coreBuild = rankForBuild(champItems, (x) => x.picks, (x) => x.wins, ITEM_MIN_PICKS, 6);
     const byRarity = (rarity) =>
       rankForBuild(
         champAugments.filter((a) => augments[a.key]?.rarity === rarity),
+        (x) => x.picks,
+        (x) => x.wins,
         AUGMENT_MIN_PICKS,
         4,
       );

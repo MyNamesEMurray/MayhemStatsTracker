@@ -127,6 +127,7 @@ export default function ChampionsTable({
         onSort={toggle}
         empty={role ? `No ${role} champions match` : "No champions found"}
         sticky="page"
+        topScroll
         footnote={
           <>
             Score is the win rate the record supports, out of 100 - the floor of a 95% confidence

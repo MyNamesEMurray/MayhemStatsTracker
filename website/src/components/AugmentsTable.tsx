@@ -154,6 +154,7 @@ export default function AugmentsTable({
           ) : null
         }
         sticky="page"
+        topScroll
         footnote={
           <>
             Score is the win rate the record supports, out of 100 - the floor of a 95% confidence

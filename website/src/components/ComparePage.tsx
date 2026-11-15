@@ -479,6 +479,7 @@ export default function ComparePage({
             onSort={toggle}
             minWidth={1600}
             sticky="panel"
+            topScroll
             empty={
               from === to
                 ? "Pick two different patches to compare."

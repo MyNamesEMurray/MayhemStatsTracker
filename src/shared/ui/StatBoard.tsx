@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { PANEL } from "./primitives";
 import SortHeader, { type SortDir, type SortState } from "./SortHeader";
 import SortControl, { type SortOption } from "./SortControl";
@@ -31,6 +31,7 @@ export default function StatBoard<Row, K extends string>({
   empty,
   minWidth = 1000,
   sticky,
+  topScroll,
   renderAfterRow,
   footnote,
   rowClass,
@@ -51,17 +52,57 @@ export default function StatBoard<Row, K extends string>({
   // wide to fit and so already scrolling sideways. Off by default: the desktop
   // app lays its boards out differently.
   sticky?: "page" | "panel";
+  // A second horizontal scrollbar above the table, shown only while the table
+  // is actually scrolling sideways, so it need not be found 50 rows down.
+  topScroll?: boolean;
   // An expanded row's contents, drawn as a full-width row underneath
   renderAfterRow?: (row: Row) => ReactNode;
   footnote?: ReactNode;
   rowClass?: (row: Row) => string;
 }) {
+  const mainRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  // Width of the scrolling content while the panel scrolls sideways, else 0
+  const [overflowW, setOverflowW] = useState(0);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!topScroll || !el) return;
+    const measure = () => {
+      const scrolls = ["auto", "scroll"].includes(getComputedStyle(el).overflowX);
+      setOverflowW(scrolls && el.scrollWidth > el.clientWidth + 1 ? el.scrollWidth : 0);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [topScroll, rows.length, columns.length]);
+  // Either bar moves the other; setting a value it already has fires no event,
+  // so the two cannot ping-pong
+  const follow = (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
+    if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
+  };
+
   const hasRank = columns.some((c) => c.area === "rank");
   const sortProps = { sort, onSort, thClass: TH };
 
   return (
     <>
+      {topScroll && overflowW > 0 && (
+        <div
+          ref={topRef}
+          onScroll={() => follow(topRef.current, mainRef.current)}
+          aria-hidden="true"
+          className={`overflow-x-auto overflow-y-hidden min-h-[14px] ${
+            sticky === "page" ? "sticky z-10 top-[var(--site-header-h,0px)]" : ""
+          }`}
+        >
+          <div style={{ width: overflowW, height: 1 }} />
+        </div>
+      )}
       <div
+        ref={mainRef}
+        onScroll={() => follow(mainRef.current, topRef.current)}
         className={`${PANEL} ${
           sticky === "panel"
             ? "overflow-auto max-h-[75vh]"

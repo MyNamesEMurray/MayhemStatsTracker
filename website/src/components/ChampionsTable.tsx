@@ -98,7 +98,7 @@ export default function ChampionsTable({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs">
+        <span className="text-xs tabular-nums min-w-[6rem]">
           {sorted.length} champion{sorted.length === 1 ? "" : "s"}
         </span>
         <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />

@@ -422,7 +422,7 @@ export default function ComparePage({
     <div className="space-y-4">
       <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
         <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">
-          Patch comparison
+          Patch Comparison
         </h1>
         <span className="text-xs">
           {formatPatch(from)} to {formatPatch(to)}

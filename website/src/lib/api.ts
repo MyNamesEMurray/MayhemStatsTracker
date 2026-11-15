@@ -305,6 +305,15 @@ export async function fetchCommunityGrowth(): Promise<CommunityGrowth | null> {
   }
 }
 
+export async function fetchMedianGamesPerContributor(): Promise<number | null> {
+  try {
+    const rows = await fetchAllRows<{ median_games_per_contributor: number }>("community_medians");
+    return rows[0]?.median_games_per_contributor ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchMatchupCoverage(): Promise<MatchupCoverage | null> {
   try {
     const rows = await fetchAllRows<MatchupCoverage>("matchup_coverage");

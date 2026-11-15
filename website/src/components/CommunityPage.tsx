@@ -5,6 +5,7 @@ import {
   fetchCommunityTotals,
   fetchGamesPerDay,
   fetchMatchupCoverage,
+  fetchMedianGamesPerContributor,
   fetchPatchSpans,
   type CommunityGrowth,
   type CommunityTotals,
@@ -39,6 +40,7 @@ export default function CommunityPage() {
   const [spans, setSpans] = useState<PatchSpanRow[]>([]);
   const [coverage, setCoverage] = useState<MatchupCoverage | null>(null);
   const [growth, setGrowth] = useState<CommunityGrowth | null>(null);
+  const [medianPerContributor, setMedianPerContributor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,13 +50,15 @@ export default function CommunityPage() {
       fetchPatchSpans(),
       fetchMatchupCoverage(),
       fetchCommunityGrowth(),
+      fetchMedianGamesPerContributor(),
     ])
-      .then(([t, d, p, c, g]) => {
+      .then(([t, d, p, c, g, m]) => {
         setTotals(t);
         setPerDay(d);
         setSpans(p);
         setCoverage(c);
         setGrowth(g);
+        setMedianPerContributor(m);
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
@@ -133,10 +137,14 @@ export default function CommunityPage() {
     coverage && possibleMatchups > 0
       ? ((coverage.matchups / possibleMatchups) * 100).toFixed(1)
       : "0.0";
-  // Mean of the complete weeks in the chart; the newest bar is still filling
-  const full = chart.slice(0, -1);
+  // Median of the complete weeks in the chart; the newest bar is still filling
+  const full = chart
+    .slice(0, -1)
+    .map((w) => w.games)
+    .sort((a, b) => a - b);
+  const mid = Math.floor(full.length / 2);
   const perWeek = full.length
-    ? Math.round(full.reduce((n, w) => n + w.games, 0) / full.length)
+    ? Math.round(full.length % 2 ? full[mid] : (full[mid - 1] + full[mid]) / 2)
     : 0;
 
   const hours = totals ? totals.total_seconds / 3600 : 0;
@@ -199,7 +207,7 @@ export default function CommunityPage() {
       <p className={`${LABEL} mb-2`}>Averages</p>
       <div className="grid grid-cols-2 min-[881px]:grid-cols-3 gap-4">
         <StatTile
-          label="Game length"
+          label="Game length (mean)"
           value={
             totals && totals.games > 0
               ? `${Math.round(totals.total_seconds / totals.games / 60)} min`
@@ -207,15 +215,11 @@ export default function CommunityPage() {
           }
         />
         <StatTile
-          label="Games per contributor"
-          value={
-            totals && totals.contributors > 0
-              ? Math.round(totals.games / totals.contributors).toLocaleString()
-              : "-"
-          }
+          label="Games per contributor (median)"
+          value={medianPerContributor != null ? medianPerContributor.toLocaleString() : "-"}
         />
         <StatTile
-          label="Games per week"
+          label="Games per week (median)"
           value={perWeek ? perWeek.toLocaleString() : "-"}
         />
       </div>

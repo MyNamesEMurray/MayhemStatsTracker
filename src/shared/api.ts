@@ -12,6 +12,9 @@
 // from the preload: every method there returns ipcRenderer.invoke(...), which
 // is Promise<any>, so inferring would hand every call site an any.
 
+import type { CompareSides } from "./compare";
+import type { CommunityImpactData } from "./communityImpact";
+
 export interface GameRecord {
   game_id: number;
   queue_id: number;
@@ -237,6 +240,8 @@ export interface ChampionData {
     name: string;
     key: string;
     class?: string;
+    // Riot's classes, primary first, so a champion with two shows under both
+    tags?: string[];
   };
 }
 
@@ -455,6 +460,9 @@ export interface ElectronAPI {
     removedMatches?: number;
     error?: string;
   }>;
+  getCommunityCompare: (from: string, to: string, queue?: number) => Promise<CompareSides>;
+  getCommunityPatchGames: (queue?: number) => Promise<Record<string, number>>;
+  getCommunityImpact: () => Promise<CommunityImpactData>;
   getCommunityMeta: () => Promise<CommunityMeta>;
   refreshCommunity: () => Promise<CommunityMeta>;
   getSummonerPuuid: () => Promise<string | null>;

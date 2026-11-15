@@ -106,6 +106,10 @@ const api: ElectronAPI = {
   getContributorId: () => ipcRenderer.invoke("contributor:get"),
   setContributorId: (token: string) => ipcRenderer.invoke("contributor:set", token),
   rotateContributorId: () => ipcRenderer.invoke("contributor:rotate"),
+  getCommunityCompare: (from: string, to: string, queue?: number) =>
+    ipcRenderer.invoke("community:compare", from, to, queue),
+  getCommunityPatchGames: (queue?: number) => ipcRenderer.invoke("community:patch-games", queue),
+  getCommunityImpact: () => ipcRenderer.invoke("community:impact"),
   getCommunityMeta: () => ipcRenderer.invoke("community:meta"),
 
   refreshCommunity: () => ipcRenderer.invoke("community:refresh"),

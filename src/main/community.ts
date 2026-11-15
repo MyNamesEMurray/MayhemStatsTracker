@@ -17,6 +17,9 @@ import { MAYHEM_QUEUE_IDS } from "../shared/queues";
 import { fetchAllRows, patchFilter } from "../shared/supabase";
 import { comparePatches } from "../shared/patch";
 import { createPatchRowCache } from "../shared/rowCache";
+import type { CompareSides } from "../shared/compare";
+import { sidesFor } from "../shared/compareSides";
+import { loadCommunityImpact } from "../shared/communityImpact";
 
 export interface CommunityChampionRow {
   patch: string;
@@ -121,6 +124,7 @@ const itemStats = createPatchRowCache<CommunityItemRow>({ view: "item_stats" });
 
 function clearDetailCaches(): void {
   matchupCache.clear();
+  compareCache.clear();
   augmentStats.clear();
   itemStats.clear();
 }
@@ -605,4 +609,81 @@ export async function getCommunityMeta(): Promise<{
     // Ten champion slots per game
     games: Math.round(slots / 10),
   };
+}
+
+// Compare reads exactly the two patches it was asked about, straight from the
+// rollups, rather than leaning on the cache: a first launch holds only the
+// newest few patches until its background fetch lands, and a comparison
+// against an older one must not come back empty because of that.
+const compareCache = new Map<string, CompareSides>();
+
+export async function getCommunityCompare(
+  from: string,
+  to: string,
+  queue?: number,
+): Promise<CompareSides> {
+  const key = `${from}|${to}|${queue ?? "all"}`;
+  const hit = compareCache.get(key);
+  if (hit) return hit;
+  const filter = patchFilter([...new Set([from, to])]);
+  const [champions, augments] = await Promise.all([
+    fetchAllRows<CommunityChampionRow>("champion_stats", CHAMPION_QUERY + filter),
+    fetchAllRows<CommunityAugmentTotalRow>("augment_totals", AUGMENT_TOTALS_QUERY + filter),
+  ]);
+  const result: CompareSides = {
+    from,
+    to,
+    champions: [
+      sidesFor(
+        champions,
+        from,
+        queue,
+        (r) => r.champion_id,
+        (r) => r.games,
+      ),
+      sidesFor(
+        champions,
+        to,
+        queue,
+        (r) => r.champion_id,
+        (r) => r.games,
+      ),
+    ],
+    augments: [
+      sidesFor(
+        augments,
+        from,
+        queue,
+        (r) => r.augment_id,
+        (r) => r.picks,
+      ),
+      sidesFor(
+        augments,
+        to,
+        queue,
+        (r) => r.augment_id,
+        (r) => r.picks,
+      ),
+    ],
+  };
+  if (compareCache.size >= DETAIL_LIMIT) compareCache.clear();
+  compareCache.set(key, result);
+  return result;
+}
+
+// Games per patch, for deciding how far back a thin newest patch has to reach
+export async function getCommunityPatchGames(queue?: number): Promise<Record<string, number>> {
+  const { champions } = await loadCommunity();
+  const slots: Record<string, number> = {};
+  for (const r of champions) {
+    if (!matches(r, undefined, queue)) continue;
+    slots[r.patch] = (slots[r.patch] ?? 0) + r.games;
+  }
+  // Ten champion slots per game
+  for (const p of Object.keys(slots)) slots[p] = Math.round(slots[p] / 10);
+  return slots;
+}
+
+export function getCommunityImpact() {
+  return loadCommunityImpact();
 }

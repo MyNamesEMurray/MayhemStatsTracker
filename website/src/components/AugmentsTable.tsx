@@ -23,6 +23,7 @@ import RarityFilter, { type Rarity } from "../../../src/shared/ui/RarityFilter.t
 import SearchField from "../../../src/shared/ui/SearchField.tsx";
 import WinRateBar from "../../../src/shared/ui/WinRateBar.tsx";
 import AugmentPairs from "../../../src/shared/ui/AugmentPairs.tsx";
+import { AUGMENTS_FOOTNOTE } from "../../../src/shared/ui/boardNotes.ts";
 import { championSlug } from "../lib/slug";
 import { useSort } from "../../../src/shared/ui/SortHeader.tsx";
 import StatBoard, {
@@ -152,13 +153,7 @@ export default function AugmentsTable({
         }
         sticky="page"
         topScroll
-        footnote={
-          <>
-            Score is the win rate the record supports, out of 100 - the floor of a 95% confidence
-            interval, so a thin sample scores well below the rate it happened to produce. Tiers rank
-            each augment against others of its rarity. * fewer than 20 games - treat with caution.
-          </>
-        }
+        footnote={AUGMENTS_FOOTNOTE}
       />
     </div>
   );

@@ -193,6 +193,14 @@ export function registerIpcHandlers() {
     upload.rotateContributorId(BrowserWindow.fromWebContents(event.sender)),
   );
 
+  ipcMain.handle("community:compare", (_e, from: string, to: string, queue?: number) =>
+    community.getCommunityCompare(from, to, queue),
+  );
+  ipcMain.handle("community:patch-games", (_e, queue?: number) =>
+    community.getCommunityPatchGames(queue),
+  );
+  ipcMain.handle("community:impact", () => community.getCommunityImpact());
+
   ipcMain.handle("community:meta", () => community.getCommunityMeta());
 
   ipcMain.handle("community:refresh", async () => {

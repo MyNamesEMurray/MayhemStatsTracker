@@ -10,7 +10,8 @@ import {
   parseDescriptions,
 } from "../shared/augment-descriptions";
 
-let championCache: Record<number, { name: string; key: string; class?: string }> = {};
+let championCache: Record<number, { name: string; key: string; class?: string; tags?: string[] }> =
+  {};
 // Data Dragon version the champion cache came from ("none" until any data
 // loads). Folded into the score-backfill key so stored scores recompute when
 // champion class data changes.
@@ -80,7 +81,12 @@ export function loadChampionData() {
       );
       const cache: typeof championCache = {};
       for (const [key, champ] of Object.entries(data.data) as any[]) {
-        cache[parseInt(champ.key)] = { name: champ.name, key, class: champ.tags?.[0] };
+        cache[parseInt(champ.key)] = {
+          name: champ.name,
+          key,
+          class: champ.tags?.[0],
+          tags: champ.tags ?? [],
+        };
       }
       championCache = cache;
       championDataVersion = version;

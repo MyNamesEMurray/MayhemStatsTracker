@@ -11,9 +11,9 @@ import StatBoard, {
   sortRows,
 } from "../../../src/shared/ui/StatBoard.tsx";
 import { championColumns, type ChampionSortKey } from "../../../src/shared/ui/boardColumns.tsx";
+import RoleFilter from "../../../src/shared/ui/RoleFilter.tsx";
+import { CHAMPIONS_FOOTNOTE } from "../../../src/shared/ui/boardNotes.ts";
 import { championSlug } from "../lib/slug";
-
-const ROLES = ["Fighter", "Tank", "Mage", "Assassin", "Support", "Marksman"];
 
 export default function ChampionsTable({
   rows,
@@ -81,32 +81,13 @@ export default function ChampionsTable({
   }, [list, columns, search, role, sort, championData]);
 
   const hasRoles = Object.values(championData).some((c) => c.tags?.length);
-  const chip = (label: string, value: string | null) => (
-    <button
-      key={label}
-      onClick={() => setRole(value)}
-      className={`px-3 max-[700px]:px-1 py-1 text-xs font-medium rounded-lg border transition-colors ${
-        role === value
-          ? "border-lol-gold/50 bg-lol-gold/15 text-lol-gold-light"
-          : "border-lol-border bg-lol-card text-lol-text hover:text-lol-gold-light"
-      }`}
-    >
-      {label}
-    </button>
-  );
-
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs tabular-nums min-w-[6rem] max-[700px]:w-full">
           {sorted.length} champion{sorted.length === 1 ? "" : "s"}
         </span>
-        {hasRoles && (
-          <div className="grid grid-cols-4 gap-1.5 w-full min-[701px]:flex min-[701px]:flex-wrap min-[701px]:w-auto min-[701px]:items-center">
-            {chip("All", null)}
-            {ROLES.map((r) => chip(r, r))}
-          </div>
-        )}
+        {hasRoles && <RoleFilter value={role} onChange={setRole} />}
         <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
         <div className="ml-auto w-48 max-[700px]:ml-0 max-[700px]:w-full">
           <SearchField value={search} onChange={setSearch} placeholder="Search champion..." />
@@ -123,13 +104,7 @@ export default function ChampionsTable({
         empty={role ? `No ${role} champions match` : "No champions found"}
         sticky="page"
         topScroll
-        footnote={
-          <>
-            Score is the win rate the record supports, out of 100 - the floor of a 95% confidence
-            interval, so a thin sample scores well below the rate it happened to produce. Tiers rank
-            Score across the current filter. * fewer than 20 games - treat with caution.
-          </>
-        }
+        footnote={CHAMPIONS_FOOTNOTE}
       />
     </div>
   );

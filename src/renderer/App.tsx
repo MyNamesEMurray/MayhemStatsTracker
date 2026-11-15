@@ -1,3 +1,5 @@
+import Compare from "./pages/Compare";
+import Community from "./pages/Community";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { GameDataProvider } from "../shared/ui/GameData";
 import { useAugmentData } from "./hooks/useChampions";
@@ -28,6 +30,8 @@ export default function App() {
             <Route path="/champions" element={<Champions />} />
             <Route path="/champions/:championId" element={<ChampionDetail />} />
             <Route path="/augments" element={<Augments />} />
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/community" element={<Community />} />
             <Route path="/live" element={<Live />} />
             <Route path="/friends" element={<Friends />} />
             <Route path="/friends/:key" element={<FriendDetail />} />

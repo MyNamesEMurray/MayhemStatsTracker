@@ -128,6 +128,25 @@ function Confidence({ z, note }: { z: number; note: string }) {
   );
 }
 
+function PinIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 17v5" />
+      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+    </svg>
+  );
+}
+
 function Delta({ value, unit }: { value: number; unit: string }) {
   const rounded = Math.round(value * 100) / 100;
   const tone =
@@ -157,16 +176,19 @@ export default function ComparePage({
   queue,
   championData,
   augmentData,
+  pinned,
   onChange,
 }: {
   patches: string[];
+  // Ids held at the top of the table; champions or augments, per the view
+  pinned: number[];
   from: string;
   to: string;
   view: View;
   queue: number | undefined;
   championData: ChampionData;
   augmentData: AugmentData;
-  onChange: (key: "from" | "to" | "view", value: string) => void;
+  onChange: (key: "from" | "to" | "view" | "pin", value: string) => void;
 }) {
   // The older patch is always the baseline on the left, even for a hand-edited
   // link, so a change never reads backwards
@@ -222,7 +244,7 @@ export default function ComparePage({
       const b = mk(to);
       // Champion rows count player slots; ten of them make a game
       const games = (x: Side[]) => Math.round(x.reduce((n, r) => n + r.games, 0) / 10);
-      return { rows: join(a, b, floor), totalFrom: games(a), totalTo: games(b) };
+      return { rows: join(a, b, 1), totalFrom: games(a), totalTo: games(b) };
     }
     const mk = (p: string): Side[] =>
       aggregateAugments(ready.augments, side(p)).map((a) => ({
@@ -237,8 +259,11 @@ export default function ComparePage({
     const a = mk(from);
     const b = mk(to);
     const picks = (x: Side[]) => x.reduce((n, r) => n + r.games, 0);
-    return { rows: join(a, b, floor), totalFrom: picks(a), totalTo: picks(b) };
-  }, [ready, view, from, to, queue, floor]);
+    return { rows: join(a, b, 1), totalFrom: picks(a), totalTo: picks(b) };
+  }, [ready, view, from, to, queue]);
+
+  const togglePin = (id: number) =>
+    onChange("pin", (pinned.includes(id) ? pinned.filter((p) => p !== id) : [...pinned, id]).join(","));
 
   const name = (id: number) =>
     view === "champions"
@@ -275,26 +300,42 @@ export default function ComparePage({
         area: "rank",
         width: "w-10",
         cellClass: "text-xs text-lol-text",
-        render: (_r, i) => i + 1,
+        render: (_r, i) => (i < 0 ? <PinIcon filled /> : i + 1),
       },
       {
         key: "name",
         label: view === "champions" ? "Champion" : "Augment",
         naturalDir: "asc",
         area: "name",
-        width: "w-[150px]",
+        width: "w-[175px]",
         sortValue: (r) => name(r.id),
-        render: (r) =>
-          view === "champions" ? (
-            <div className="flex items-center gap-2.5">
-              <ChampionIcon championId={r.id} size={28} />
-              <span className="text-[13px] text-lol-text-bright whitespace-nowrap">
-                {name(r.id)}
-              </span>
-            </div>
-          ) : (
-            <AugmentIcon augmentId={r.id} size={26} showName />
-          ),
+        render: (r) => (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => togglePin(r.id)}
+              aria-pressed={pinned.includes(r.id)}
+              title={pinned.includes(r.id) ? "Unpin" : "Pin to the top of the table"}
+              className={`shrink-0 p-0.5 rounded transition-colors ${
+                pinned.includes(r.id)
+                  ? "text-lol-gold"
+                  : "text-lol-text/40 hover:text-lol-gold"
+              }`}
+            >
+              <PinIcon filled={pinned.includes(r.id)} />
+            </button>
+            {view === "champions" ? (
+              <div className="flex items-center gap-2.5 min-w-0">
+                <ChampionIcon championId={r.id} size={28} />
+                <span className="text-[13px] text-lol-text-bright whitespace-nowrap">
+                  {name(r.id)}
+                </span>
+              </div>
+            ) : (
+              <AugmentIcon augmentId={r.id} size={26} showName />
+            )}
+          </div>
+        ),
       },
       {
         key: "dWin",
@@ -371,17 +412,23 @@ export default function ComparePage({
       ),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, from, to, championData, augmentData]);
+  }, [view, from, to, championData, augmentData, pinned]);
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = q
-      ? joined.rows.filter((r) => name(r.id).toLowerCase().includes(q))
-      : joined.rows;
+    // Pinned rows are drawn above, whatever the filters say
+    let list = joined.rows.filter(
+      (r) => !pinned.includes(r.id) && r.gamesFrom >= floor && r.gamesTo >= floor,
+    );
+    if (q) list = list.filter((r) => name(r.id).toLowerCase().includes(q));
     if (sureOnly) list = list.filter((r) => Math.abs(r.z) >= Z_HIGH);
     return sortRows(list, columns, sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined, search, sureOnly, sort, columns]);
+  }, [joined, search, sureOnly, floor, pinned, sort, columns]);
+
+  const pinnedRows = pinned
+    .map((id) => joined.rows.find((r) => r.id === id))
+    .filter((r): r is Row => r != null);
 
   const patchSelect = (which: "from" | "to", value: string) => (
     <select
@@ -407,7 +454,11 @@ export default function ComparePage({
 
   const tab = (v: View, label: string) => (
     <button
-      onClick={() => onChange("view", v)}
+      onClick={() => {
+        onChange("view", v);
+        // Champion ids and augment ids are different things
+        onChange("pin", "");
+      }}
       className={`px-3 py-1.5 max-[700px]:flex-1 text-[13px] font-semibold rounded-md transition-colors ${
         view === v
           ? "bg-lol-gold/20 text-lol-gold-light"
@@ -509,7 +560,8 @@ export default function ComparePage({
             rowKey={(r) => r.id}
             sort={sort}
             onSort={toggle}
-            minWidth={1440}
+            minWidth={1470}
+            pinnedRows={pinnedRows}
             sticky="page"
             fitsFrom="xl"
             topScroll

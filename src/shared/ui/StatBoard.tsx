@@ -33,6 +33,7 @@ export default function StatBoard<Row, K extends string>({
   sticky,
   fitsFrom = "lg",
   topScroll,
+  pinnedRows,
   renderAfterRow,
   footnote,
   rowClass,
@@ -57,6 +58,10 @@ export default function StatBoard<Row, K extends string>({
   // A second horizontal scrollbar above the table, shown only while the table
   // is actually scrolling sideways, so it need not be found 50 rows down.
   topScroll?: boolean;
+  // Rows held at the top, frozen under the header with it. They are drawn
+  // outside `rows`, so the caller leaves them out of that list. Index -1 is
+  // what their cells' render() gets, since they have no rank.
+  pinnedRows?: Row[];
   // An expanded row's contents, drawn as a full-width row underneath
   renderAfterRow?: (row: Row) => ReactNode;
   footnote?: ReactNode;
@@ -84,6 +89,21 @@ export default function StatBoard<Row, K extends string>({
   const follow = (from: HTMLDivElement | null, to: HTMLDivElement | null) => {
     if (from && to && to.scrollLeft !== from.scrollLeft) to.scrollLeft = from.scrollLeft;
   };
+
+  const cells = (row: Row, i: number) =>
+    columns.map((c, ci) => (
+      <td
+        key={ci}
+        // The card layout reads these two rather than counting columns. The
+        // CSS it replaced keyed off nth-child, so inserting a column silently
+        // relabelled every figure after it.
+        data-area={c.area ?? "stat"}
+        data-label={(c.area ?? "stat") === "stat" ? (c.cardLabel ?? c.label) : undefined}
+        className={`px-3 py-[9px] ${c.cellClass ?? ""} ${c.detail ? "board-detail" : ""}`}
+      >
+        {c.render(row, i)}
+      </td>
+    ));
 
   const hasRank = columns.some((c) => c.area === "rank");
   const sortProps = { sort, onSort, thClass: TH };
@@ -155,8 +175,24 @@ export default function StatBoard<Row, K extends string>({
                 ),
               )}
             </tr>
+            {/* Pinned rows live in the header so they freeze with it. The
+                header is hidden in the card layout, so the tbody carries a copy
+                that only shows there. */}
+            {pinnedRows?.map((row) => (
+              <tr key={`pin-${rowKey(row)}`} className="board-pinned">
+                {cells(row, -1)}
+              </tr>
+            ))}
           </thead>
           <tbody>
+            {pinnedRows?.map((row) => (
+              <tr
+                key={`pincard-${rowKey(row)}`}
+                className="board-pinned-card group border-t border-lol-border/50"
+              >
+                {cells(row, -1)}
+              </tr>
+            ))}
             {rows.map((row, i) => (
               <Fragment key={rowKey(row)}>
                 <tr
@@ -165,24 +201,7 @@ export default function StatBoard<Row, K extends string>({
                     onRowClick ? "hover:bg-lol-card-hover cursor-pointer" : ""
                   } ${rowClass?.(row) ?? ""}`}
                 >
-                  {columns.map((c, ci) => (
-                    <td
-                      key={ci}
-                      // The card layout reads these two rather than counting
-                      // columns. The CSS it replaced keyed off nth-child, so
-                      // inserting a column silently relabelled every figure
-                      // after it.
-                      data-area={c.area ?? "stat"}
-                      data-label={
-                        (c.area ?? "stat") === "stat" ? (c.cardLabel ?? c.label) : undefined
-                      }
-                      className={`px-3 py-[9px] ${c.cellClass ?? ""} ${
-                        c.detail ? "board-detail" : ""
-                      }`}
-                    >
-                      {c.render(row, i)}
-                    </td>
-                  ))}
+                  {cells(row, i)}
                 </tr>
                 {renderAfterRow?.(row)}
               </Fragment>

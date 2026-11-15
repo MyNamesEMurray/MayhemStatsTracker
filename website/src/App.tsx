@@ -703,6 +703,12 @@ export default function App() {
                   championData={data.championData}
                   augmentData={data.augmentData}
                   onBack={() => navigate("/")}
+                  onCompare={() => {
+                    navigate("/");
+                    setParam("tab", "compare");
+                    setParam("view", null);
+                    setParam("pin", String(selectedChampion));
+                  }}
                 />
               </>
             )}
@@ -716,6 +722,7 @@ export default function App() {
               queue={queue}
               championData={data.championData}
               augmentData={data.augmentData}
+              pinned={(params.get("pin") ?? "").split(",").filter(Boolean).map(Number)}
               onChange={setParam}
             />
           )}

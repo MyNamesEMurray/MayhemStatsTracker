@@ -73,6 +73,7 @@ export default function ChampionDetail({
   championData,
   augmentData,
   onBack,
+  onCompare,
   onSelectChampion,
 }: {
   championId: number;
@@ -86,6 +87,8 @@ export default function ChampionDetail({
   championData: ChampionData;
   augmentData: AugmentData;
   onBack: () => void;
+  // Opens the Compare tab with this champion pinned at the top
+  onCompare: () => void;
   onSelectChampion?: (championId: number) => void;
 }) {
   const [itemData, setItemData] = useState<ItemData>({});
@@ -219,9 +222,14 @@ export default function ChampionDetail({
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="text-sm text-lol-gold hover:text-lol-gold-light">
-        ← All champions
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={onBack} className="text-sm text-lol-gold hover:text-lol-gold-light">
+          ← All champions
+        </button>
+        <button onClick={onCompare} className="text-sm text-lol-gold hover:text-lol-gold-light">
+          Compare across patches →
+        </button>
+      </div>
 
       {/* Hero */}
       <div className={`${PANEL} p-5`}>

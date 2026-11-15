@@ -117,18 +117,15 @@ export default function AugmentsTable({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs tabular-nums min-w-[6rem]">
+        <span className="text-xs tabular-nums min-w-[6rem] max-[700px]:w-full">
           {sorted.length} augment{sorted.length === 1 ? "" : "s"}
         </span>
-        <RarityFilter value={rarity} onChange={setRarity} />
+        <div className="grid grid-cols-4 gap-1.5 w-full max-[700px]:[&>button]:px-1 max-[700px]:[&>button]:text-center min-[701px]:flex min-[701px]:flex-wrap min-[701px]:w-auto min-[701px]:items-center">
+          <RarityFilter value={rarity} onChange={setRarity} />
+        </div>
         <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
-        <div className="ml-auto">
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search augment..."
-            width={192}
-          />
+        <div className="ml-auto w-48 max-[700px]:ml-0 max-[700px]:w-full">
+          <SearchField value={search} onChange={setSearch} placeholder="Search augment..." />
         </div>
       </div>
 

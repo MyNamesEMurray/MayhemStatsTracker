@@ -408,7 +408,7 @@ export default function ComparePage({
   const tab = (v: View, label: string) => (
     <button
       onClick={() => onChange("view", v)}
-      className={`px-3 py-1.5 text-[13px] font-semibold rounded-md transition-colors ${
+      className={`px-3 py-1.5 max-[700px]:flex-1 text-[13px] font-semibold rounded-md transition-colors ${
         view === v
           ? "bg-lol-gold/20 text-lol-gold-light"
           : "text-lol-text hover:text-lol-gold-light"
@@ -430,16 +430,17 @@ export default function ComparePage({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 rounded-lg border border-lol-border/60 bg-lol-card p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-lol-border/60 bg-lol-card p-0.5 max-[700px]:w-full">
           {tab("champions", "Champions")}
           {tab("augments", "Augments")}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs max-[700px]:grid max-[700px]:grid-cols-[auto_1fr_auto_1fr] max-[700px]:w-full max-[700px]:[&_select]:!w-full max-[700px]:[&_select]:!max-w-none">
           <span>From</span>
           {patchSelect("from", from)}
           <span>to</span>
           {patchSelect("to", to)}
         </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 max-[700px]:w-full">
         <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
           <input
             type="checkbox"
@@ -458,20 +459,22 @@ export default function ComparePage({
           />
           Show under {MIN_SAMPLE} {view === "champions" ? "games" : "picks"}
         </label>
-        <div className="ml-auto flex flex-wrap items-center gap-2 max-[640px]:ml-0 max-[640px]:w-full">
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2 max-[700px]:ml-0 max-[700px]:w-full">
           <SortControl
             options={sortOptions(columns)}
             sort={sort}
             onSort={toggle}
           />
-          <SearchField
-            value={search}
-            onChange={setSearch}
-            placeholder={
-              view === "champions" ? "Search champion..." : "Search augment..."
-            }
-            width={192}
-          />
+          <div className="w-48 max-[700px]:w-full">
+            <SearchField
+              value={search}
+              onChange={setSearch}
+              placeholder={
+                view === "champions" ? "Search champion..." : "Search augment..."
+              }
+            />
+          </div>
         </div>
       </div>
 

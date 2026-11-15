@@ -160,7 +160,7 @@ export default function App() {
     const el = headerRef.current;
     if (!el) return;
     const set = () =>
-      document.documentElement.style.setProperty("--site-header-h", `${el.offsetHeight}px`);
+      document.documentElement.style.setProperty("--site-header-h", `${el.getBoundingClientRect().height}px`);
     set();
     const ro = new ResizeObserver(set);
     ro.observe(el);
@@ -505,7 +505,7 @@ export default function App() {
   const navTab = (label: string, active: boolean, onClick: () => void) => (
     <button
       onClick={onClick}
-      className={`flex items-center px-3.5 max-[480px]:px-2 max-[400px]:px-1.5 text-[13px] font-semibold transition-colors ${
+      className={`flex items-center max-[600px]:justify-center px-3.5 max-[600px]:px-1 max-[600px]:py-2.5 text-[13px] max-[360px]:text-[12px] font-semibold transition-colors ${
         active
           ? "text-lol-gold-light shadow-[inset_0_-2px_0_var(--color-lol-gold)]"
           : "text-lol-text hover:text-lol-gold-light"
@@ -523,12 +523,12 @@ export default function App() {
         {/* Unified chrome: full-width bar, frozen to the top on desktop */}
         <header
           ref={headerRef}
-          className="md:sticky md:top-0 md:z-40 bg-lol-dark/85 backdrop-blur-md border-b border-lol-border/60"
+          className="md:sticky md:top-0 md:z-40 bg-lol-dark border-b border-lol-border/60"
         >
           {/* Wraps at every width: logo + nav + the whole filter group only fit
             one row above ~1080px, and forcing nowrap below that pushed the
             filters off the right edge instead of onto a second line. */}
-          <div className="max-w-[1120px] min-[1300px]:max-w-[1320px] min-[1700px]:max-w-[1560px] min-[2000px]:max-w-[1760px] mx-auto px-6 flex items-center gap-6 flex-wrap">
+          <div className="max-w-[1120px] min-[1300px]:max-w-[1320px] min-[1700px]:max-w-[1560px] min-[2000px]:max-w-[1760px] mx-auto px-6 flex items-center gap-6 max-[600px]:gap-y-0 flex-wrap">
             <a
               href="/"
               onClick={(e) => {
@@ -560,7 +560,7 @@ export default function App() {
             {/* The nav takes the slack instead of the filter group using ml-auto:
               that right-aligns the filters while they share the top row, but
               leaves them left-aligned with everything else once they wrap. */}
-            <nav className="flex gap-1 self-stretch max-w-full max-[480px]:overflow-x-auto min-[1081px]:flex-1">
+            <nav className="flex gap-1 self-stretch min-[1081px]:flex-1 max-[600px]:grid max-[600px]:grid-cols-4 max-[600px]:gap-0 max-[600px]:w-full">
               {navTab(
                 "Champions",
                 !onCommunityPage && (tab === "champions" || onChampionPage),
@@ -585,15 +585,13 @@ export default function App() {
               series - neither takes a patch or a queue - so the filters sat
               there doing nothing. Hidden rather than disabled: a control that
               can't change anything shouldn't ask to be tried. */}
-            {!onCommunityPage && (
-              <div className="flex items-center gap-2 py-2 max-[1080px]:w-full max-[1080px]:pt-0 max-[1080px]:pb-2.5 max-[1080px]:flex-wrap">
-                {tab !== "compare" && (
-                  <PatchRangeSelect
-                    patches={patches}
-                    selection={parsePatchParam(patchParam, patches)}
-                    onChange={(next) => setParam("patch", encodePatchParam(next, patches))}
-                  />
-                )}
+            {!onCommunityPage && tab !== "compare" && (
+              <div className="flex items-center gap-2 py-2 max-[1080px]:w-full max-[1080px]:pt-1 max-[1080px]:pb-3 max-[1080px]:flex-wrap max-[600px]:[&>div]:w-full max-[600px]:[&_select:only-child]:!w-full">
+                <PatchRangeSelect
+                  patches={patches}
+                  selection={parsePatchParam(patchParam, patches)}
+                  onChange={(next) => setParam("patch", encodePatchParam(next, patches))}
+                />
               </div>
             )}
           </div>

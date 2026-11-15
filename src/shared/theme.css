@@ -178,7 +178,7 @@ body {
        and score, because sharing one with the tier badge let a longer
        champion push into the badge, and wrapping the name to fix that looked
        worse than the overlap. */
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
       "rank name name score"
       "tier bar  bar  bar";
@@ -188,7 +188,7 @@ body {
   }
   /* A board with no rank column gives the row's first column to the name */
   .stat-board[data-rank="no"] tbody tr {
-    grid-template-columns: 1fr 1fr auto auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
     grid-template-areas:
       "name name name score"
       "tier bar  bar  bar";
@@ -230,6 +230,9 @@ body {
   }
   .stat-board td[data-label] {
     white-space: normal !important;
+    /* Labelled figures share a grid row; top-aligning keeps every label on one
+       line even when one value, like KDA, is taller than its neighbours */
+    align-self: start;
   }
   .stat-board td[data-label]::before {
     content: attr(data-label);
@@ -289,6 +292,8 @@ body {
   /* The site header is sticky from 768px, and its height is measured into
      --site-header-h because it wraps to a second row at some widths. */
   .stat-board[data-sticky="page"] thead th {
-    top: var(--site-header-h, 0px);
+    /* The measured height can be fractional, and a 1px overlap under the
+       header (which sits above this) leaves no sliver to see rows through */
+    top: calc(var(--site-header-h, 0px) - 1px);
   }
 }

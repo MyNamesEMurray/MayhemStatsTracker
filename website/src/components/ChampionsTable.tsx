@@ -101,13 +101,13 @@ export default function ChampionsTable({
         <span className="text-xs tabular-nums min-w-[6rem]">
           {sorted.length} champion{sorted.length === 1 ? "" : "s"}
         </span>
-        <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
         {hasRoles && (
           <div className="flex flex-wrap items-center gap-1.5">
             {chip("All", null)}
             {ROLES.map((r) => chip(r, r))}
           </div>
         )}
+        <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
         <div className="ml-auto">
           <SearchField
             value={search}

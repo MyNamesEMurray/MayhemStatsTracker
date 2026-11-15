@@ -117,10 +117,10 @@ export default function AugmentsTable({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <RarityFilter value={rarity} onChange={setRarity} />
-        <span className="text-xs self-center ml-1">
+        <span className="text-xs tabular-nums min-w-[6rem]">
           {sorted.length} augment{sorted.length === 1 ? "" : "s"}
         </span>
+        <RarityFilter value={rarity} onChange={setRarity} />
         <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
         <div className="ml-auto">
           <SearchField

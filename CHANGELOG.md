@@ -27,6 +27,27 @@ v2.10.0 will. GitHub hides the comment when rendering, and only fixes for
 bugs of our own making need it - a fix for a long-standing bug or something
 on Riot's end is news to everyone, so leave those unmarked.
 
+## v2.14.15 - 2026-11-15
+
+<!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->
+
+- feat: add Community site link to title bar
+- fix(website): widen queue select, drop redundant title words, scale layout on ultrawide
+- feat(website): community stat tiles drop subtitles, show 30 day growth, add four tiles
+- feat(website): responsive Change/Chg headers on the compare table
+- feat(website): freeze tier list and compare table headers while scrolling
+- feat(website): top horizontal scrollbar on tables that scroll sideways
+- feat(website): compare table scrolls with the page like the tier lists
+- fix(website): table header corners match the panel; small phone overflow on compare and community
+- fix(website): mobile control layout and nav, opaque site header, no gap under it
+- feat(website): themed checkbox style
+- feat(website): pin champions and augments to the top of the compare table, with a link from champion pages
+- feat(website): fit long augment names in fixed rows, one row height for all tables, square champion icons, compare notes moved to About
+- feat(website): names shrink only when they do not fit, compare ranks count pinned rows, mobile pin and nav polish
+- feat(website): sample size under each compare win rate, asterisk under 20, right-aligned figures
+- fix: audit round 1 - saved community summary, shared item rule and key, tested compare and auto-widen logic, strict prerender on deploy, URL and perf cleanups
+- Fix CI: restore Poro-Snax exports, format, type fix, prerender retry
+
 ## v2.14.14 - 2026-09-24
 
 <!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->

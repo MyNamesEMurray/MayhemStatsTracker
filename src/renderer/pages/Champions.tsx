@@ -16,7 +16,7 @@ import { useSort } from "../../shared/ui/SortHeader";
 import SearchField from "../../shared/ui/SearchField";
 import RoleFilter from "../../shared/ui/RoleFilter";
 import { CHAMPIONS_FOOTNOTE } from "../../shared/ui/boardNotes";
-import QueueSelect, { queueLabel } from "../components/QueueSelect";
+import { queueLabel } from "../components/QueueSelect";
 import StatBoard, { SortControl, sortOptions, sortRows } from "../../shared/ui/StatBoard";
 import { championColumns, type ChampionSortKey } from "../../shared/ui/boardColumns";
 
@@ -24,7 +24,7 @@ export default function Champions() {
   const champData = useChampionData();
   // Wide windows get larger icons; the icon components size in pixels
   const wide = useMediaQuery("(min-width: 1500px)");
-  const { patchSelection, setPatchSelection, queue, setQueue } = useStatsFilters();
+  const { patchSelection, setPatchSelection, queue } = useStatsFilters();
   const [source, setSource] = useStatsSource();
   const patchOptions = usePatchOptions(source);
   const widen = useAutoWiden({
@@ -150,7 +150,6 @@ export default function Champions() {
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <QueueSelect value={queue} onChange={setQueue} />
           <PatchRangeSelect
             patches={patchOptions}
             selection={patchSelection}

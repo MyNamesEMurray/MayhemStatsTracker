@@ -181,7 +181,7 @@ export default function ComparePage({
       },
       {
         key: "dWin",
-        label: "Win rate change",
+        label: "Δ Win rate",
         area: "score",
         width: "w-[130px]",
         sortValue: (r) => r.winTo - r.winFrom,
@@ -197,7 +197,7 @@ export default function ComparePage({
       },
       {
         key: "dPick",
-        label: "Pick rate change",
+        label: "Δ Pick rate",
         width: "w-[130px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.pickTo - r.pickFrom,
@@ -205,7 +205,7 @@ export default function ComparePage({
       },
       {
         key: "dScore",
-        label: "Score change",
+        label: "Δ Score",
         width: "w-[120px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.scoreTo - r.scoreFrom,

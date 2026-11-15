@@ -123,6 +123,28 @@ export async function fetchAugmentTotals(patches?: string[]): Promise<AugmentTot
   }
 }
 
+// The Compare tab asks for two patches at a time and flips between them, so it
+// keeps what it fetched for a few minutes instead of downloading it again. In
+// memory only: the tier lists refetch fresh rollups on every visit, and a saved
+// copy hours older than theirs would make the two disagree.
+const COMPARE_TTL_MS = 10 * 60 * 1000;
+const championStatsCache = createPatchRowCache<ChampionStatRow>({
+  view: "champion_stats",
+  ttlMs: COMPARE_TTL_MS,
+});
+const augmentTotalsCache = createPatchRowCache<AugmentTotalRow>({
+  view: "augment_totals",
+  ttlMs: COMPARE_TTL_MS,
+});
+
+export function fetchChampionStatsFor(patches: string[]): Promise<ChampionStatRow[]> {
+  return championStatsCache.load("compare", patches, fetchChampionStats);
+}
+
+export function fetchAugmentTotalsFor(patches: string[]): Promise<AugmentTotalRow[]> {
+  return augmentTotalsCache.load("compare", patches, fetchAugmentTotals);
+}
+
 // Everything below is per-champion or per-augment, fetched when a page that
 // needs it opens. Filtering server-side keeps a champion page to a couple of
 // thousand rows instead of the half-million the full grain would cost.

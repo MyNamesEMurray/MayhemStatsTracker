@@ -20,7 +20,7 @@ export default function ItemIcon({
 }: {
   itemId: number;
   // From the item mapping. Absent - an unknown id, or a mapping still loading
-  // - falls straight through to the legacy mirror and then the placeholder.
+  // - shows the placeholder.
   iconPath?: string;
   // The CommunityDragon branch the path came from. Defaults to "latest".
   branch?: string;
@@ -33,7 +33,7 @@ export default function ItemIcon({
 }) {
   const [attempt, setAttempt] = useState(0);
   const sources = useMemo(
-    () => (itemId ? itemIconSources(itemId, iconPath, branch) : []),
+    () => (itemId ? itemIconSources(iconPath, branch) : []),
     [itemId, iconPath, branch],
   );
   const key = sources.join("|");

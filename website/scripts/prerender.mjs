@@ -11,20 +11,22 @@
 //   * no line is printed from a sample too small to mean anything, so the
 //     page never claims "100% win rate over 1 pick".
 //
-// Deliberately fails soft: if the data APIs are unreachable at build time,
-// the site still deploys as a plain SPA.
+// Fails soft locally: if the data APIs are unreachable at build time, a local
+// or CI build still produces a plain SPA. On the real deploy build it fails
+// instead (see the end of this file).
 import { execFileSync } from "child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+// Run with --experimental-strip-types (see package.json) so these shared
+// TypeScript modules load without a build step
+import { isFinishedItem } from "../../src/shared/items.ts";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../../src/shared/supabase.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(__dirname, "../dist");
 const SITE = "https://mayhemstats.com";
 
-const SUPABASE_URL = "https://lmzenzxbhotszvwsnhlm.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtemVuenhiaG90c3p2d3NuaGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyMjU0NDcsImV4cCI6MjEwMTgwMTQ0N30.7FoFD7LFaV5Yin4OnjYjECAYZPa2I9xc6oQa4xPAKpA";
 
 // A champion page is only worth putting in front of search users once the
 // win rate on it carries a readable confidence interval. Twenty games is
@@ -211,15 +213,7 @@ async function main() {
   if (Array.isArray(itemsJson))
     for (const it of itemsJson) {
       itemNames[it.id] = it.name || "";
-      const buildsInto = Array.isArray(it.to) ? it.to.length : 0;
-      const builtFrom = Array.isArray(it.from) ? it.from.length : 0;
-      const categories = Array.isArray(it.categories) ? it.categories : [];
-      const price = it.priceTotal ?? 0;
-      itemFinished[it.id] =
-        (buildsInto === 0 &&
-          !categories.includes("Consumable") &&
-          (price >= 500 || it.id >= 100000)) ||
-        (categories.includes("Boots") && builtFrom > 0);
+      itemFinished[it.id] = isFinishedItem(it);
     }
 
   const augmentName = (id) => augments[id]?.name || "";
@@ -553,5 +547,14 @@ ${sitemapUrls
 }
 
 main().catch((err) => {
-  console.warn(`prerender skipped: ${err.message} - deploying as plain SPA`);
+  // On the real build, a failure has to stop the deploy: shipping without the
+  // champion pages sends those URLs to the SPA fallback, which carries the
+  // homepage's canonical tag and reads to Google as a duplicate. A failed
+  // build leaves the last good version live. Local and CI builds stay soft so
+  // a flaky network does not block them. Workers Builds sets WORKERS_CI.
+  const real = process.env.WORKERS_CI || process.env.CF_PAGES;
+  console[real ? "error" : "warn"](
+    `prerender ${real ? "FAILED" : "skipped"}: ${err.message}${real ? "" : " - deploying as plain SPA"}`,
+  );
+  if (real) process.exitCode = 1;
 });

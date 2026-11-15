@@ -33,10 +33,6 @@ export function itemIconUrl(iconPath: string, branch = "latest"): string {
   return CDRAGON_ASSET_URL(branch, iconPath);
 }
 
-// Legacy fallback for when the CommunityDragon item mapping is unavailable
-export const ITEM_ICON_URL = (itemId: number): string =>
-  `https://www.league-of-data-base.com/upload/16.4.1/item_img/${itemId}.png`;
-
 // Some Mayhem item icons carry a texture-variant suffix CommunityDragon does
 // not export ("3153_Blade_of_the_Ruined_King.project_jade.png" 404s while
 // "3153_Blade_of_the_Ruined_King.png" exists), so the base path is worth
@@ -47,16 +43,17 @@ export function stripIconVariant(iconPath: string): string | null {
 }
 
 // Every URL worth trying for an item's icon, best first: the exact path on the
-// patch's own branch, the same path with any texture variant stripped, then
-// the legacy mirror. The app spreads these over a patch's own CommunityDragon
-// branch; the site only ever needs "latest".
-export function itemIconSources(itemId: number, iconPath?: string, branch = "latest"): string[] {
+// patch's own branch, then the same path with any texture variant stripped. The
+// app spreads these over a patch's own CommunityDragon branch; the site only
+// ever needs "latest". There used to be a third-party mirror after these. It
+// answers 404 for every item and sends Cross-Origin-Resource-Policy:
+// same-origin, so no browser could load it - one dead request per unknown item.
+export function itemIconSources(iconPath?: string, branch = "latest"): string[] {
   const urls: string[] = [];
   if (iconPath) {
     urls.push(CDRAGON_ASSET_URL(branch, iconPath));
     const base = stripIconVariant(iconPath);
     if (base) urls.push(CDRAGON_ASSET_URL(branch, base));
   }
-  urls.push(ITEM_ICON_URL(itemId));
   return urls;
 }

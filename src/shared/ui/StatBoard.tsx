@@ -48,7 +48,7 @@ export default function StatBoard<Row, K extends string>({
   // What the table needs before it is worth scrolling sideways instead of
   // squeezing. Under it the panel scrolls; under 700px the cards take over.
   minWidth?: number;
-  // Freeze the header row under the site's own sticky header while the page
+  // Freeze the header row under the site's own frozen header while the page
   // scrolls. Off by default: the desktop app lays its boards out differently.
   sticky?: "page";
   // The window width from which the table fits without scrolling sideways, so

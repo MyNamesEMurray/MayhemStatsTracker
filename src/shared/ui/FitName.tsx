@@ -35,13 +35,15 @@ export default function FitName({
   }, []);
   useLayoutEffect(() => setStep(0), [children, width]);
 
+  // Only when the name, the width or the step changes, so a table full of these
+  // does not force a layout read per row on every unrelated render
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || step >= STEPS.length - 1) return;
     if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) {
       setStep(step + 1);
     }
-  });
+  }, [step, children, width]);
 
   return (
     <span ref={ref} className={`block min-w-0 overflow-hidden ${STEPS[step]} ${className}`}>

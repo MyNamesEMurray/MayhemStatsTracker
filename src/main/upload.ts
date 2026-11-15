@@ -2,14 +2,10 @@ import { getMainWindow } from "./window-ref";
 import { BrowserWindow } from "electron";
 import { randomUUID } from "crypto";
 import * as db from "./db";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "../shared/supabase";
 
-// The Supabase project holding the anonymous community stats. The key below
-// is the project's public client credential (safe to ship): all writes go
-// through the validating ingest function, and the tables are locked behind
-// row level security with only aggregate views readable.
-const SUPABASE_URL = "https://lmzenzxbhotszvwsnhlm.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtemVuenhiaG90c3p2d3NuaGxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyMjU0NDcsImV4cCI6MjEwMTgwMTQ0N30.7FoFD7LFaV5Yin4OnjYjECAYZPa2I9xc6oQa4xPAKpA";
+// The project URL and its public client key are shared with the site; see
+// ../shared/supabase.ts. All writes go through the validating ingest function.
 const INGEST_URL = `${SUPABASE_URL}/functions/v1/ingest`;
 const DELETE_URL = `${SUPABASE_URL}/functions/v1/delete-contributions`;
 

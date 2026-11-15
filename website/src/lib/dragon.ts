@@ -1,6 +1,7 @@
 // Champion and augment names/icons from the same public sources the desktop
 // app uses. Cached in localStorage for a day so repeat visits skip the fetch.
 
+import { isFinishedItem as isFinishedRawItem } from "../../../src/shared/items.ts";
 import {
   applyDescriptions,
   AUGMENT_DESCRIPTIONS_PATH,
@@ -143,22 +144,7 @@ export function loadItemData(): Promise<ItemData> {
     const out: ItemData = {};
     if (Array.isArray(data)) {
       for (const item of data) {
-        const buildsInto = Array.isArray(item.to) ? item.to.length : 0;
-        const categories: string[] = Array.isArray(item.categories) ? item.categories : [];
-        const price: number = item.priceTotal ?? 0;
-        // Mode-specific prismatics (six-digit ids) count regardless of price.
-        // Tier-2 boots upgrade into tier-3, so they build into something while
-        // still being a real build step - include them by price instead.
-        const builtFrom = Array.isArray(item.from) ? item.from.length : 0;
-        // Tier-2 boots upgrade into tier-3, so they build into something while
-        // still being a real purchase. What separates them from the 300g
-        // Boots everyone starts with is that they are built *from* it -
-        // price alone dropped Ionian Boots of Lucidity, at 900g, off the list.
-        const completed =
-          (buildsInto === 0 &&
-            !categories.includes("Consumable") &&
-            (price >= 500 || item.id >= 100000)) ||
-          (categories.includes("Boots") && builtFrom > 0);
+        const completed = isFinishedRawItem(item);
         out[item.id] = {
           name: item.name || `Item ${item.id}`,
           iconPath: item.iconPath || "",

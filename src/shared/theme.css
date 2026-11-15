@@ -304,7 +304,7 @@ body {
   background: #3a4457;
 }
 
-/* Frozen board header. Opt-in per board through StatBoard's `sticky` prop. The
+/* Frozen board header. Opt-in per board through a prop on StatBoard. The
    whole <thead> sticks, not its cells, so pinned rows inside it freeze along
    with the header row. */
 .stat-board[data-sticky] thead {
@@ -365,7 +365,7 @@ body {
   }
 }
 @media (min-width: 768px) {
-  /* The site header is sticky from 768px, and its height is measured into
+  /* The site header is frozen from 768px, and its height is measured into
      --site-header-h because it wraps to a second row at some widths. */
   .stat-board[data-sticky="page"] thead {
     /* The measured height can be fractional, and a 1px overlap under the

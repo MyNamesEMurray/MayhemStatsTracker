@@ -38,6 +38,8 @@ import {
   type Filters,
 } from "./lib/stats";
 import AdSlot from "./components/AdSlot";
+import { pageScope, showsWidenHint, widenAction } from "./lib/autoWiden";
+import { parsePins } from "./lib/compare";
 import CommunityPage from "./components/CommunityPage";
 import ComparePage from "./components/ComparePage";
 import AugmentsTable from "./components/AugmentsTable";
@@ -99,6 +101,9 @@ export default function App() {
   const tab: Tab =
     tabParam === "augments" ? "augments" : tabParam === "compare" ? "compare" : "champions";
   const patchParam = params.get("patch");
+  // Compare's pinned ids, parsed once per change of the parameter
+  const pinParam = params.get("pin");
+  const pinned = useMemo(() => parsePins(pinParam), [pinParam]);
   const queueParam = params.get("queue");
 
   // Champion pages live at /champion/<slug>/ (prerendered server-side); the
@@ -323,6 +328,13 @@ export default function App() {
     };
   }, [patchParam, patches, patchList, data, loadedPatches]);
 
+  // Compare's own settings do not follow the reader to other tabs or into
+  // champion URLs
+  useEffect(() => {
+    if (tab === "compare") return;
+    for (const key of ["pin", "from", "to", "view"]) if (params.has(key)) setParam(key, null);
+  }, [tab, params, setParam]);
+
   const queues = useMemo(() => (data ? availableQueues(data.championRows) : []), [data]);
 
   // ARAM Mayhem is the default queue; ?queue=all widens to everything. The
@@ -407,42 +419,43 @@ export default function App() {
   // champion shouldn't quietly change what the tier list shows afterwards -
   // and neither should a range the reader picked while looking at that
   // champion, since they chose it to read one page, not to change the site.
+  // The decisions live in lib/autoWiden.ts, where they are tested.
   const boardPatch = useRef<string | null>(null);
   const wasOnChampion = useRef(false);
   const lastChampion = useRef<number | null>(null);
-
-  // Applied once per champion (and once for the board), so choosing "current
-  // patch" afterwards isn't immediately undone by this
   const widenedFor = useRef<string | null>(null);
-  // The range this widened to. Without it the effect below sees the param it
-  // just wrote, reads it as the reader's own choice, and clears the banner on
-  // the very next render - so the range moved with nothing explaining why.
   const appliedParam = useRef<string | null>(null);
   const [autoWiden, setAutoWiden] = useState<typeof autoWidenTo>(null);
-  useEffect(() => {
-    const key = `${selectedChampion ?? "board"}:${queue ?? "all"}`;
-    if (patchParam != null) {
-      // Anything other than the range we set is the reader overriding it
-      if (patchParam !== appliedParam.current && autoWiden) setAutoWiden(null);
-      return;
-    }
-    // Back on the current patch alone: the widened-range notice no longer
-    // describes what is on screen. The hint below takes its place.
-    if (autoWiden && widenedFor.current === key) {
-      setAutoWiden(null);
-      return;
-    }
-    if (widenedFor.current === key || !autoWidenTo) return;
-    const range = `${autoWidenTo.from}-${autoWidenTo.to}`;
-    widenedFor.current = key;
-    appliedParam.current = range;
-    setAutoWiden(autoWidenTo);
-    setParam("patch", range);
-  }, [patchParam, autoWidenTo, selectedChampion, queue, setParam, autoWiden]);
 
   const widenKey = `${selectedChampion ?? "board"}:${queue ?? "all"}`;
-  const showWidenHint =
-    patchParam == null && !autoWiden && autoWidenTo != null && widenedFor.current === widenKey;
+  const widenInputs = {
+    patchParam,
+    key: widenKey,
+    widenedFor: widenedFor.current,
+    appliedParam: appliedParam.current,
+    hasNotice: autoWiden != null,
+    widenTo: autoWidenTo,
+  };
+  const showWidenHint = showsWidenHint(widenInputs);
+
+  useEffect(() => {
+    const action = widenAction({
+      patchParam,
+      key: widenKey,
+      widenedFor: widenedFor.current,
+      appliedParam: appliedParam.current,
+      hasNotice: autoWiden != null,
+      widenTo: autoWidenTo,
+    });
+    if (action.type === "clear") setAutoWiden(null);
+    else if (action.type === "apply" && autoWidenTo) {
+      widenedFor.current = widenKey;
+      appliedParam.current = action.range;
+      setAutoWiden(autoWidenTo);
+      setParam("patch", action.range);
+    }
+  }, [patchParam, autoWidenTo, widenKey, setParam, autoWiden]);
+
   const applyWiden = () => {
     if (!autoWidenTo) return;
     const range = `${autoWidenTo.from}-${autoWidenTo.to}`;
@@ -452,22 +465,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (onChampionPage && !wasOnChampion.current) {
+    const scope = pageScope({
+      onChampionPage,
+      wasOnChampion: wasOnChampion.current,
+      selectedChampion,
+      lastChampion: lastChampion.current,
+    });
+    if (scope.type === "enter") {
       boardPatch.current = patchParam;
-    } else if (
-      onChampionPage &&
-      lastChampion.current != null &&
-      selectedChampion !== lastChampion.current
-    ) {
-      // Cross-linked from one champion to another: the range the last one
-      // needed says nothing about this one, so start it over from the board's
+    } else if (scope.type === "reset") {
       if (patchParam !== boardPatch.current) setParam("patch", boardPatch.current);
-      widenedFor.current = null;
-      appliedParam.current = null;
-      setAutoWiden(null);
-    } else if (!onChampionPage && wasOnChampion.current) {
-      if (patchParam !== boardPatch.current) setParam("patch", boardPatch.current);
-      // Let the next champion page widen from scratch
       widenedFor.current = null;
       appliedParam.current = null;
       setAutoWiden(null);
@@ -722,7 +729,7 @@ export default function App() {
               queue={queue}
               championData={data.championData}
               augmentData={data.augmentData}
-              pinned={(params.get("pin") ?? "").split(",").filter(Boolean).map(Number)}
+              pinned={pinned}
               onChange={setParam}
             />
           )}

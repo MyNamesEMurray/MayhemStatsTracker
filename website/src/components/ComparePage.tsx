@@ -7,7 +7,15 @@ import {
 } from "../lib/api";
 import type { AugmentData, ChampionData } from "../lib/dragon";
 import { getAugmentName, getChampionName } from "../lib/dragon";
-import { aggregateAugments, aggregateChampions, formatPatch, MIN_SAMPLE, score } from "../lib/stats";
+import {
+  aggregateAugments,
+  aggregateChampions,
+  formatPatch,
+  formatWhole,
+  kdaRatio,
+  MIN_SAMPLE,
+  score,
+} from "../lib/stats";
 import AugmentIcon from "../../../src/shared/ui/AugmentIcon.tsx";
 import ChampionIcon from "../../../src/shared/ui/ChampionIcon.tsx";
 import SearchField from "../../../src/shared/ui/SearchField.tsx";
@@ -21,7 +29,22 @@ import StatBoard, {
 } from "../../../src/shared/ui/StatBoard.tsx";
 
 type View = "champions" | "augments";
-type SortKey = "name" | "sig" | "dWin" | "dPick" | "dScore" | "winTo" | "games";
+type SortKey =
+  | "name"
+  | "sig"
+  | "dWin"
+  | "dPick"
+  | "dScore"
+  | "winFrom"
+  | "winTo"
+  | "pickFrom"
+  | "pickTo"
+  | "gamesFrom"
+  | "gamesTo"
+  | "kdaFrom"
+  | "kdaTo"
+  | "dmgFrom"
+  | "dmgTo";
 
 interface Row {
   id: number;
@@ -33,6 +56,10 @@ interface Row {
   pickTo: number;
   scoreFrom: number;
   scoreTo: number;
+  kdaFrom: number;
+  kdaTo: number;
+  dmgFrom: number;
+  dmgTo: number;
   // Two-proportion z of the win rate change. |z| >= 1.96 is the usual 95% bar.
   z: number;
 }
@@ -41,6 +68,10 @@ interface Side {
   id: number;
   games: number;
   wins: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  damage: number;
 }
 
 // Both sides' rows joined on id. Anything under the sample floor on either
@@ -66,6 +97,10 @@ function join(from: Side[], to: Side[]): Row[] {
       pickTo: slotsTo > 0 ? (t.games / slotsTo) * 100 : 0,
       scoreFrom: score(f.wins, f.games),
       scoreTo: score(t.wins, t.games),
+      kdaFrom: kdaRatio(f.kills, f.deaths, f.assists),
+      kdaTo: kdaRatio(t.kills, t.deaths, t.assists),
+      dmgFrom: f.damage / f.games,
+      dmgTo: t.damage / t.games,
     });
   }
   return rows;
@@ -95,7 +130,11 @@ function Confidence({ z }: { z: number }) {
 function Delta({ value, unit }: { value: number; unit: string }) {
   const rounded = Math.round(value * 10) / 10;
   const tone =
-    rounded > 0 ? "text-lol-win" : rounded < 0 ? "text-lol-loss" : "text-lol-text";
+    rounded > 0
+      ? "text-lol-win"
+      : rounded < 0
+        ? "text-lol-loss"
+        : "text-lol-text";
   return (
     <span className={`font-semibold whitespace-nowrap ${tone}`}>
       {rounded > 0 ? "+" : ""}
@@ -104,12 +143,6 @@ function Delta({ value, unit }: { value: number; unit: string }) {
     </span>
   );
 }
-
-const range = (a: number, b: number) => (
-  <span className="text-lol-text">
-    {a.toFixed(1)}% <span className="text-lol-text/50">to</span> {b.toFixed(1)}%
-  </span>
-);
 
 // How a patch compares to an earlier one: win rate, pick rate and score, per
 // champion or per augment. Rows come from the same rollups as the tier lists,
@@ -172,6 +205,10 @@ export default function ComparePage({
           id: c.champion_id,
           games: c.games,
           wins: c.wins,
+          kills: c.kills,
+          deaths: c.deaths,
+          assists: c.assists,
+          damage: c.damage,
         }));
       return join(mk(from), mk(to));
     }
@@ -180,27 +217,65 @@ export default function ComparePage({
         id: a.augment_id,
         games: a.picks,
         wins: a.wins,
+        kills: a.kills,
+        deaths: a.deaths,
+        assists: a.assists,
+        damage: a.damage,
       }));
     return join(mk(from), mk(to));
   }, [ready, view, from, to, queue]);
 
   const name = (id: number) =>
-    view === "champions" ? getChampionName(championData, id) : getAugmentName(augmentData, id);
+    view === "champions"
+      ? getChampionName(championData, id)
+      : getAugmentName(augmentData, id);
 
-  const columns = useMemo<BoardColumn<Row, SortKey>[]>(
-    () => [
-      { key: null, label: "#", area: "rank", width: "w-10", cellClass: "text-xs text-lol-text", render: (_r, i) => i + 1 },
+  const columns = useMemo<BoardColumn<Row, SortKey>[]>(() => {
+    const pf = formatPatch(from);
+    const pt = formatPatch(to);
+    // One stat becomes two columns, one per patch, so either can be sorted
+    const pair = (
+      base: string,
+      label: string,
+      width: string,
+      value: (r: Row, which: "From" | "To") => number,
+      show: (n: number) => string,
+      inCard = false,
+    ): BoardColumn<Row, SortKey>[] =>
+      (["From", "To"] as const).map((which) => ({
+        key: `${base}${which}` as SortKey,
+        label: `${label} ${which === "From" ? pf : pt}`,
+        width,
+        // A card of fifteen figures is a wall; it keeps win rate and games
+        area: inCard ? ("stat" as const) : ("none" as const),
+        cellClass: "text-[13px] text-lol-text",
+        sortValue: (r: Row) => value(r, which),
+        render: (r: Row) => show(value(r, which)),
+      }));
+    const pct = (n: number) => `${n.toFixed(1)}%`;
+    return [
+      {
+        key: null,
+        label: "#",
+        area: "rank",
+        width: "w-10",
+        cellClass: "text-xs text-lol-text",
+        render: (_r, i) => i + 1,
+      },
       {
         key: "name",
         label: view === "champions" ? "Champion" : "Augment",
         naturalDir: "asc",
         area: "name",
+        width: "w-[170px]",
         sortValue: (r) => name(r.id),
         render: (r) =>
           view === "champions" ? (
             <div className="flex items-center gap-2.5">
               <ChampionIcon championId={r.id} size={28} />
-              <span className="text-[13px] text-lol-text-bright whitespace-nowrap">{name(r.id)}</span>
+              <span className="text-[13px] text-lol-text-bright whitespace-nowrap">
+                {name(r.id)}
+              </span>
             </div>
           ) : (
             <AugmentIcon augmentId={r.id} size={26} showName />
@@ -225,50 +300,72 @@ export default function ComparePage({
         sortValue: (r) => Math.abs(r.z),
         render: (r) => <Confidence z={r.z} />,
       },
-      {
-        key: "winTo",
-        label: "Win rate",
-        width: "w-[170px]",
-        cellClass: "text-[13px]",
-        sortValue: (r) => r.winTo,
-        render: (r) => range(r.winFrom, r.winTo),
-      },
+      ...pair(
+        "win",
+        "Win",
+        "w-[120px]",
+        (r, w) => (w === "From" ? r.winFrom : r.winTo),
+        pct,
+        true,
+      ),
       {
         key: "dPick",
         label: "Pick rate change",
         shortLabel: "Pick rate chg",
-        cardLabel: "Pick rate chg",
+        area: "none",
         width: "w-[140px] min-[1200px]:w-[175px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.pickTo - r.pickFrom,
         render: (r) => <Delta value={r.pickTo - r.pickFrom} unit=" pp" />,
       },
+      ...pair(
+        "pick",
+        "Pick",
+        "w-[120px]",
+        (r, w) => (w === "From" ? r.pickFrom : r.pickTo),
+        pct,
+      ),
       {
         key: "dScore",
         label: "Score change",
         shortLabel: "Score chg",
-        cardLabel: "Score chg",
+        area: "none",
         width: "w-[120px] min-[1200px]:w-[150px]",
         cellClass: "text-[13px]",
         sortValue: (r) => r.scoreTo - r.scoreFrom,
         render: (r) => <Delta value={r.scoreTo - r.scoreFrom} unit="" />,
       },
-      {
-        key: "games",
-        label: view === "champions" ? "Games" : "Picks",
-        width: "w-[130px]",
-        cellClass: "text-[13px] text-lol-text",
-        sortValue: (r) => r.gamesTo,
-        render: (r) => `${r.gamesFrom.toLocaleString()} to ${r.gamesTo.toLocaleString()}`,
-      },
-    ],
+      ...pair(
+        "kda",
+        "KDA",
+        "w-[130px]",
+        (r, w) => (w === "From" ? r.kdaFrom : r.kdaTo),
+        (n) => n.toFixed(2),
+      ),
+      ...pair(
+        "dmg",
+        "Damage",
+        "w-[150px]",
+        (r, w) => (w === "From" ? r.dmgFrom : r.dmgTo),
+        formatWhole,
+      ),
+      ...pair(
+        "games",
+        view === "champions" ? "Games" : "Picks",
+        "w-[130px]",
+        (r, w) => (w === "From" ? r.gamesFrom : r.gamesTo),
+        (n) => n.toLocaleString(),
+        true,
+      ),
+    ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [view, championData, augmentData],
-  );
+  }, [view, from, to, championData, augmentData]);
 
   const shown = useMemo(() => {
     const q = search.trim().toLowerCase();
-    let list = q ? joined.filter((r) => name(r.id).toLowerCase().includes(q)) : joined;
+    let list = q
+      ? joined.filter((r) => name(r.id).toLowerCase().includes(q))
+      : joined;
     if (sureOnly) list = list.filter((r) => Math.abs(r.z) >= Z_HIGH);
     return sortRows(list, columns, sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -305,7 +402,9 @@ export default function ComparePage({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline gap-3 mb-1.5 flex-wrap">
-        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">Patch comparison</h1>
+        <h1 className="text-[22px] font-extrabold text-lol-gold-light m-0">
+          Patch comparison
+        </h1>
         <span className="text-xs">
           {formatPatch(from)} to {formatPatch(to)}
         </span>
@@ -332,11 +431,17 @@ export default function ComparePage({
           High confidence only
         </label>
         <div className="ml-auto flex flex-wrap items-center gap-2 max-[640px]:ml-0 max-[640px]:w-full">
-          <SortControl options={sortOptions(columns)} sort={sort} onSort={toggle} />
+          <SortControl
+            options={sortOptions(columns)}
+            sort={sort}
+            onSort={toggle}
+          />
           <SearchField
             value={search}
             onChange={setSearch}
-            placeholder={view === "champions" ? "Search champion..." : "Search augment..."}
+            placeholder={
+              view === "champions" ? "Search champion..." : "Search augment..."
+            }
             width={192}
           />
         </div>
@@ -348,34 +453,41 @@ export default function ComparePage({
         </div>
       )}
       {!error && !ready && (
-        <div className="text-center text-lol-text py-20">Loading patches...</div>
+        <div className="text-center text-lol-text py-20">
+          Loading patches...
+        </div>
       )}
       {!error && ready && (
-        <StatBoard
-          columns={columns}
-          rows={shown}
-          rowKey={(r) => r.id}
-          sort={sort}
-          onSort={toggle}
-          minWidth={900}
-          empty={
-            from === to
-              ? "Pick two different patches to compare."
-              : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
-          }
-          footnote={
-            <>
-              Changes are {formatPatch(to)} minus {formatPatch(from)}, in percentage points (pp).
-              Confidence tests whether the win rate change could just be luck, given how many games
-              each patch has: High is about 95% sure it is real, Medium about 80%, Low means a thin
-              or noisy sample. With this many rows, a few High ones will still be luck.
-              Only {view === "champions" ? "champions" : "augments"} with at least {MIN_SAMPLE}{" "}
-              {view === "champions" ? "games" : "picks"} on both patches are shown, since smaller
-              samples swing on luck. Score change is the shift in the confidence-floored score used
-              by the tier lists.
-            </>
-          }
-        />
+        <div className="cmp-board">
+          <StatBoard
+            columns={columns}
+            rows={shown}
+            rowKey={(r) => r.id}
+            sort={sort}
+            onSort={toggle}
+            minWidth={2000}
+            empty={
+              from === to
+                ? "Pick two different patches to compare."
+                : `Nothing has ${MIN_SAMPLE}+ games on both patches yet.`
+            }
+            footnote={
+              <>
+                Changes are {formatPatch(to)} minus {formatPatch(from)}, in
+                percentage points (pp). Confidence tests whether the win rate
+                change could just be luck, given how many games each patch has:
+                High is about 95% sure it is real, Medium about 80%, Low means a
+                thin or noisy sample. With this many rows, a few High ones will
+                still be luck. Only{" "}
+                {view === "champions" ? "champions" : "augments"} with at least{" "}
+                {MIN_SAMPLE} {view === "champions" ? "games" : "picks"} on both
+                patches are shown, since smaller samples swing on luck. Score
+                change is the shift in the confidence-floored score used by the
+                tier lists.
+              </>
+            }
+          />
+        </div>
       )}
     </div>
   );

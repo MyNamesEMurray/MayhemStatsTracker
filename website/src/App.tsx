@@ -160,7 +160,7 @@ export default function App() {
     const el = headerRef.current;
     if (!el) return;
     const set = () =>
-      document.documentElement.style.setProperty("--site-header-h", `${el.getBoundingClientRect().height}px`);
+      document.documentElement.style.setProperty("--site-header-h", `${el.offsetHeight}px`);
     set();
     const ro = new ResizeObserver(set);
     ro.observe(el);

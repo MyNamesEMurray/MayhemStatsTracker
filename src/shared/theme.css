@@ -355,6 +355,14 @@ body {
   .stat-board .board-pinned {
     display: none;
   }
+  /* In a card the wash goes on the card, not each cell, or the gaps between
+     the labelled figures show through as patches. */
+  .stat-board .board-pinned-card {
+    background: var(--pin-bg);
+  }
+  .stat-board .board-pinned-card td {
+    background: transparent;
+  }
 }
 @media (min-width: 768px) {
   /* The site header is sticky from 768px, and its height is measured into

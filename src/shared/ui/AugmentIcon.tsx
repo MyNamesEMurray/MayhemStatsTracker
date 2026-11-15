@@ -1,4 +1,5 @@
 import { augmentIconUrl } from "../cdn";
+import FitName from "./FitName";
 import { useAugments } from "./GameData";
 import { RARITY_LABEL, RARITY_RING, RARITY_TEXT } from "./rarity";
 import { useTooltip } from "./useTooltip";
@@ -70,19 +71,14 @@ export default function AugmentIcon({
           }}
         />
       )}
-      {showName && (
-        <span
-          className={`${
-            fit
-              ? aug.name.length > 14
-                ? "text-[11px] leading-[1.1] line-clamp-2"
-                : "text-sm truncate"
-              : `text-sm ${wrap ? "leading-snug" : "truncate"}`
-          } ${nameColor}`}
-        >
-          {aug.name}
-        </span>
-      )}
+      {showName &&
+        (fit ? (
+          <FitName className={nameColor}>{aug.name}</FitName>
+        ) : (
+          <span className={`text-sm ${wrap ? "leading-snug" : "truncate"} ${nameColor}`}>
+            {aug.name}
+          </span>
+        ))}
       {tooltip}
     </div>
   );

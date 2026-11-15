@@ -505,7 +505,7 @@ export default function App() {
   const navTab = (label: string, active: boolean, onClick: () => void) => (
     <button
       onClick={onClick}
-      className={`flex items-center max-[600px]:justify-center px-3.5 max-[600px]:px-1 max-[600px]:py-2.5 text-[13px] max-[360px]:text-[12px] font-semibold transition-colors ${
+      className={`flex items-center max-[600px]:justify-center px-3.5 max-[600px]:px-1 max-[600px]:py-2.5 text-[13px] max-[360px]:text-[11px] font-semibold transition-colors ${
         active
           ? "text-lol-gold-light shadow-[inset_0_-2px_0_var(--color-lol-gold)]"
           : "text-lol-text hover:text-lol-gold-light"

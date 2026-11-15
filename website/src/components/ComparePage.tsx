@@ -18,6 +18,7 @@ import {
   score,
 } from "../lib/stats";
 import AugmentIcon from "../../../src/shared/ui/AugmentIcon.tsx";
+import FitName from "../../../src/shared/ui/FitName.tsx";
 import ChampionIcon from "../../../src/shared/ui/ChampionIcon.tsx";
 import SearchField from "../../../src/shared/ui/SearchField.tsx";
 import { PANEL } from "../../../src/shared/ui/primitives.tsx";
@@ -49,6 +50,9 @@ type SortKey =
 
 interface Row {
   id: number;
+  // Place in the sorted, filtered list, pinned rows included; undefined when
+  // the current filters leave the row out
+  rank?: number;
   gamesFrom: number;
   gamesTo: number;
   winFrom: number;
@@ -300,7 +304,7 @@ export default function ComparePage({
         area: "rank",
         width: "w-10",
         cellClass: "text-xs text-lol-text",
-        render: (_r, i) => (i < 0 ? <PinIcon filled /> : i + 1),
+        render: (r) => r.rank ?? "–",
       },
       {
         key: "name",
@@ -327,15 +331,7 @@ export default function ComparePage({
             {view === "champions" ? (
               <div className="flex items-center gap-2.5 min-w-0">
                 <ChampionIcon championId={r.id} size={28} />
-                <span
-                  className={`text-lol-text-bright ${
-                    name(r.id).length > 14
-                      ? "text-[11px] leading-[1.1] line-clamp-2"
-                      : "text-[13px] whitespace-nowrap truncate"
-                  }`}
-                >
-                  {name(r.id)}
-                </span>
+                <FitName className="text-lol-text-bright">{name(r.id)}</FitName>
               </div>
             ) : (
               <AugmentIcon augmentId={r.id} size={26} showName fit />
@@ -420,20 +416,21 @@ export default function ComparePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, from, to, championData, augmentData, pinned]);
 
-  const shown = useMemo(() => {
+  // Ranks count every row the filters keep, pinned ones included: a pinned row
+  // keeps its true place, and the rows below it are not renumbered to hide it
+  const ranked = useMemo(() => {
     const q = search.trim().toLowerCase();
-    // Pinned rows are drawn above, whatever the filters say
-    let list = joined.rows.filter(
-      (r) => !pinned.includes(r.id) && r.gamesFrom >= floor && r.gamesTo >= floor,
-    );
+    let list = joined.rows.filter((r) => r.gamesFrom >= floor && r.gamesTo >= floor);
     if (q) list = list.filter((r) => name(r.id).toLowerCase().includes(q));
     if (sureOnly) list = list.filter((r) => Math.abs(r.z) >= Z_HIGH);
-    return sortRows(list, columns, sort);
+    return sortRows(list, columns, sort).map((r, i) => ({ ...r, rank: i + 1 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [joined, search, sureOnly, floor, pinned, sort, columns]);
+  }, [joined, search, sureOnly, floor, sort, columns]);
 
+  // Pinned rows show whatever the filters say, with a rank only if they pass
+  const shown = ranked.filter((r) => !pinned.includes(r.id));
   const pinnedRows = pinned
-    .map((id) => joined.rows.find((r) => r.id === id))
+    .map((id) => ranked.find((r) => r.id === id) ?? joined.rows.find((r) => r.id === id))
     .filter((r): r is Row => r != null);
 
   const patchSelect = (which: "from" | "to", value: string) => (

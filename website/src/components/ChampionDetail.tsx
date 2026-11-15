@@ -223,11 +223,18 @@ export default function ChampionDetail({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <button onClick={onBack} className="text-sm text-lol-gold hover:text-lol-gold-light">
+        <button
+          onClick={onBack}
+          className="text-sm text-lol-gold hover:text-lol-gold-light whitespace-nowrap"
+        >
           ← All champions
         </button>
-        <button onClick={onCompare} className="text-sm text-lol-gold hover:text-lol-gold-light">
-          Compare across patches →
+        <button
+          onClick={onCompare}
+          className="text-sm text-lol-gold hover:text-lol-gold-light whitespace-nowrap"
+        >
+          <span className="max-[420px]:hidden">Compare across patches</span>
+          <span className="min-[421px]:hidden">Compare patches</span> →
         </button>
       </div>
 

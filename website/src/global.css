@@ -7,3 +7,17 @@ html {
      not sit a few pixels wider than one that scrolls */
   scrollbar-gutter: stable;
 }
+
+/* Every size here is px, so on a big monitor the page only got wider, never
+   bigger. zoom scales text and layout together; the width caps in App.tsx are
+   in pre-zoom px, so they grow with it. Media queries ignore zoom. */
+@media (min-width: 2000px) {
+  html {
+    zoom: 1.2;
+  }
+}
+@media (min-width: 2800px) {
+  html {
+    zoom: 1.5;
+  }
+}

@@ -446,7 +446,7 @@ export default function ComparePage({
             type="checkbox"
             checked={sureOnly}
             onChange={(e) => setSureOnly(e.target.checked)}
-            className="accent-[var(--color-lol-gold)]"
+            className="checkbox"
           />
           High confidence only
         </label>
@@ -455,7 +455,7 @@ export default function ComparePage({
             type="checkbox"
             checked={showThin}
             onChange={(e) => setShowThin(e.target.checked)}
-            className="accent-[var(--color-lol-gold)]"
+            className="checkbox"
           />
           Show under {MIN_SAMPLE} {view === "champions" ? "games" : "picks"}
         </label>

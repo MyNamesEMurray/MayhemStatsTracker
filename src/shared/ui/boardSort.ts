@@ -29,6 +29,9 @@ export interface BoardColumn<Row, K extends string> {
   // Tailwind width class for the header cell
   width?: string;
   cellClass?: string;
+  // Right-align the column's figures and its header, from the table layout up.
+  // Cards keep their own left-aligned layout.
+  align?: "right";
   headerTitle?: string;
   // Columns held back until the window is wide enough to hold them
   detail?: boolean;

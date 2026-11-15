@@ -285,6 +285,9 @@ export default function ComparePage({
       value: (r: Row, which: "From" | "To") => number,
       show: (n: number) => string,
       inCard = false,
+      // A small second line under the value, and whether the value rests on
+      // too few games to trust
+      sub?: (r: Row, which: "From" | "To") => { text: string; thin: boolean },
     ): BoardColumn<Row, SortKey>[] =>
       (["From", "To"] as const).map((which) => ({
         key: `${base}${which}` as SortKey,
@@ -292,9 +295,23 @@ export default function ComparePage({
         width,
         // A card of fifteen figures is a wall; it keeps win rate and games
         area: inCard ? ("stat" as const) : ("none" as const),
+        align: "right" as const,
         cellClass: "text-[13px] text-lol-text",
         sortValue: (r: Row) => value(r, which),
-        render: (r: Row) => show(value(r, which)),
+        render: (r: Row) => {
+          if (!sub) return show(value(r, which));
+          const s = sub(r, which);
+          return (
+            <div className="leading-tight">
+              <span className={s.thin ? "text-lol-text/60" : ""}>
+                {show(value(r, which))}
+                {/* Always drawn, hidden when not needed, so digits line up */}
+                <span className={s.thin ? "" : "invisible"}>*</span>
+              </span>
+              <span className="block text-[10px] leading-[10px] text-lol-text/60 mt-0.5">{s.text}</span>
+            </div>
+          );
+        },
       }));
     const pct = (n: number) => `${n.toFixed(2)}%`;
     return [
@@ -341,6 +358,7 @@ export default function ComparePage({
       },
       {
         key: "dWin",
+        align: "right",
         label: "Win chg",
         cardLabel: "Win chg",
         area: "score",
@@ -350,6 +368,7 @@ export default function ComparePage({
       },
       {
         key: "sig",
+        align: "right",
         label: "Confidence",
         shortLabel: "Conf.",
         cardLabel: "Confidence",
@@ -370,9 +389,17 @@ export default function ComparePage({
         (r, w) => (w === "From" ? r.winFrom : r.winTo),
         pct,
         true,
+        (r, w) => {
+          const n = w === "From" ? r.gamesFrom : r.gamesTo;
+          return {
+            text: `${n.toLocaleString()} ${view === "champions" ? "games" : "picks"}`,
+            thin: n < MIN_SAMPLE,
+          };
+        },
       ),
       {
         key: "dPick",
+        align: "right",
         label: "Pick chg",
         cardLabel: "Pick chg",
         area: "none",
@@ -390,6 +417,7 @@ export default function ComparePage({
       ),
       {
         key: "dScore",
+        align: "right",
         label: "Score chg",
         cardLabel: "Score chg",
         area: "none",

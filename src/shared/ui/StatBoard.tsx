@@ -99,7 +99,9 @@ export default function StatBoard<Row, K extends string>({
         // relabelled every figure after it.
         data-area={c.area ?? "stat"}
         data-label={(c.area ?? "stat") === "stat" ? (c.cardLabel ?? c.label) : undefined}
-        className={`px-3 py-[9px] ${c.cellClass ?? ""} ${c.detail ? "board-detail" : ""}`}
+        className={`px-3 py-[9px] ${c.cellClass ?? ""} ${c.detail ? "board-detail" : ""} ${
+          c.align === "right" ? "min-[701px]:text-right" : ""
+        }`}
       >
         {c.render(row, i)}
       </td>
@@ -170,6 +172,7 @@ export default function StatBoard<Row, K extends string>({
                     naturalDir={c.naturalDir}
                     title={c.headerTitle}
                     className={`${c.width ?? ""} ${c.detail ? "board-detail" : ""}`}
+                    align={c.align}
                     {...sortProps}
                   />
                 ),

@@ -10,6 +10,7 @@ import { getAugmentName, getChampionName } from "../lib/dragon";
 import {
   aggregateAugments,
   aggregateChampions,
+  comparePatches,
   formatPatch,
   formatWhole,
   kdaRatio,
@@ -150,8 +151,8 @@ function Delta({ value, unit }: { value: number; unit: string }) {
 // only the ones the tier list already holds.
 export default function ComparePage({
   patches,
-  from,
-  to,
+  from: fromParam,
+  to: toParam,
   view,
   queue,
   championData,
@@ -167,6 +168,10 @@ export default function ComparePage({
   augmentData: AugmentData;
   onChange: (key: "from" | "to" | "view", value: string) => void;
 }) {
+  // The older patch is always the baseline on the left, even for a hand-edited
+  // link, so a change never reads backwards
+  const [from, to] =
+    comparePatches(fromParam, toParam) > 0 ? [toParam, fromParam] : [fromParam, toParam];
   const [rows, setRows] = useState<{
     key: string;
     champions: ChampionStatRow[];
@@ -382,7 +387,14 @@ export default function ComparePage({
     <select
       className="select select-sm"
       value={value}
-      onChange={(e) => onChange(which, e.target.value)}
+      onChange={(e) => {
+        // Picking a patch past the other end swaps them rather than inverting
+        const pair: [string, string] =
+          which === "from" ? [e.target.value, to] : [from, e.target.value];
+        const [a, b] = comparePatches(pair[0], pair[1]) > 0 ? [pair[1], pair[0]] : pair;
+        onChange("from", a);
+        onChange("to", b);
+      }}
       aria-label={which === "from" ? "Compare from patch" : "Compare to patch"}
     >
       {patches.map((p) => (

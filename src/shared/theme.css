@@ -326,6 +326,9 @@ body {
 .stat-board[data-sticky] thead th:last-child {
   border-top-right-radius: 0.75rem;
 }
+.stat-board[data-sticky="panel"] thead {
+  top: 0;
+}
 /* Pinned rows: a gold wash so they read as held, not as part of the list */
 .stat-board {
   --pin-bg: color-mix(in srgb, var(--color-lol-gold) 9%, var(--color-lol-card));

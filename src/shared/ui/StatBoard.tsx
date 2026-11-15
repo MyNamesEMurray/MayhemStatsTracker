@@ -50,7 +50,10 @@ export default function StatBoard<Row, K extends string>({
   minWidth?: number;
   // Freeze the header row under the site's own frozen header while the page
   // scrolls. Off by default: the desktop app lays its boards out differently.
-  sticky?: "page";
+  // "panel" is for a host whose page does not scroll under a frozen header
+  // of its own: the table scrolls inside a bounded panel and the header sticks
+  // to that, whatever the width.
+  sticky?: "page" | "panel";
   // The window width from which the table fits without scrolling sideways, so
   // the panel can clip instead of scroll and the header can stick to the page.
   // Narrower, it scrolls sideways and the header does not freeze.
@@ -130,13 +133,15 @@ export default function StatBoard<Row, K extends string>({
         ref={mainRef}
         onScroll={() => follow(mainRef.current, topRef.current)}
         className={`${PANEL} ${
-          sticky === "page"
-            ? // Clipping instead of scrolling is what lets the header stick to
-              // the page, so it only applies once the table fits unscrolled
-              fitsFrom === "xl"
-              ? "overflow-x-auto min-[1700px]:overflow-x-clip"
-              : "overflow-x-auto min-[1100px]:overflow-x-clip"
-            : "overflow-x-auto"
+          sticky === "panel"
+            ? "overflow-auto max-h-[calc(100vh-9rem)]"
+            : sticky === "page"
+              ? // Clipping instead of scrolling is what lets the header stick to
+                // the page, so it only applies once the table fits unscrolled
+                fitsFrom === "xl"
+                ? "overflow-x-auto min-[1700px]:overflow-x-clip"
+                : "overflow-x-auto min-[1100px]:overflow-x-clip"
+              : "overflow-x-auto"
         }`}
       >
         <table

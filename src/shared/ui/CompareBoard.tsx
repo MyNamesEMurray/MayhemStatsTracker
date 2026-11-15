@@ -108,6 +108,7 @@ export default function CompareBoard({
   championName,
   augmentName,
   about,
+  sticky = "page",
   onChange,
 }: {
   patches: string[];
@@ -122,6 +123,7 @@ export default function CompareBoard({
   augmentName: (id: number) => string;
   // The "how is this calculated" link, which each host opens its own way
   about: ReactNode;
+  sticky?: "page" | "panel";
   onChange: (key: "from" | "to" | "view" | "pin", value: string) => void;
 }) {
   // The older patch is always the baseline on the left, even for a hand-edited
@@ -462,7 +464,7 @@ export default function CompareBoard({
             onSort={toggle}
             minWidth={1495}
             pinnedRows={pinnedRows}
-            sticky="page"
+            sticky={sticky}
             fitsFrom="xl"
             topScroll
             empty={

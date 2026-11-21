@@ -12,11 +12,16 @@ name: Refresh augment descriptions
 # built from, and both surfaces read it over the network, so the text reaches
 # players at the site's next deploy and the app's next launch.
 #
-# So this runs the generator daily and opens a pull request on the days the
-# text actually changes, which in practice means a patch moved the augment
-# pool. It deliberately doesn't push to main on its own - the text is player-
-# visible and comes from an upstream nobody here controls, so a human reads the
-# diff first. Quiet days finish in under a minute having done nothing.
+# So this runs the generator daily and, on the days the text actually changes
+# (in practice a patch moved the augment pool), opens a pull request and
+# squash-merges it straight away. The collapse guard and the typecheck below
+# are the only gates: the text is player-visible and comes from an upstream
+# nobody here controls, so the PR stays in history as the record of what
+# changed. Quiet days finish in under a minute having done nothing.
+#
+# Merging with the workflow token does not trigger checks.yml or release.yml,
+# which is why the gates live in this job. If main ever gets branch protection
+# with required checks, the merge step fails and the PR waits for a human.
 #
 # Opening the PR needs "Allow GitHub Actions to create and approve pull
 # requests" turned on under Settings -> Actions -> General. Without it the run
@@ -136,10 +141,10 @@ jobs:
             echo "- Patch \`$WAS_PATCH\` → \`$NOW_PATCH\`"
             echo "- Augments carrying description text: $WAS_COUNT → $NOW_COUNT"
             echo
-            echo "Worth skimming the diff before merging: the text is player-visible, and a"
-            echo "reworded augment changes quietly rather than showing up as a new line."
-            echo "Merging puts the new text on the site at its next deploy; the app picks it"
-            echo "up in the next release."
+            echo "Merged automatically by the workflow. The text is player-visible, and a"
+            echo "reworded augment changes quietly rather than showing up as a new line,"
+            echo "so skim the diff after the fact. The new text reaches the site at its"
+            echo "next deploy; the app picks it up in the next release."
             echo
             echo "<details><summary>Generator output</summary>"
             echo
@@ -167,3 +172,5 @@ jobs:
             while read -r OLD; do
               gh pr close "$OLD" --delete-branch --comment "Superseded by #$PR."
             done
+
+          gh pr merge "$PR" --squash --delete-branch

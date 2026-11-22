@@ -1,5 +1,5 @@
 {
-  "patch": "16.22",
+  "patch": "16.23",
   "descriptions": {
     "1": "Using Abilities grant you stacking Ability Haste.\nThis resets each round.",
     "2": "Gain ? Item Haste (equivalent to ?% Item CDR).\nItem Haste reduces the cooldown of all Item Abilities.",
@@ -569,6 +569,7 @@
     "3163": "Healing or Shielding allied champions gathers Butterflies around you.\nAfter collecting ? Butterflies, damaging an enemy champion fires all of them each dealing ? Magic damage with subsequent hits dealing ? damage.",
     "3173": "Vex is upset. Her next basic ability will Fear enemies hit.",
     "3176": "Empowered ? gains 20 Ability Haste, 10% increased damage, and 10% increased healing and shielding.",
+    "3262": "Every few seconds Autocast a burst slime from your body, dealing magic damage to nearby enemies.\nIf you hit a champion, secrete a blob that heals you when walked over.",
     "7001": "Zz'Rot Portal spawns ? additional minion, plus an additional minion for every ? levels you have.\nMinions are also spawned when the portal is destroyed.",
     "7002": "You may purchase unlimited amounts of The Black Cleaver. On purchase, increase the new Black Cleaver's stats based on how many you already have.\nInstantly gain The Brutalizer.",
     "7003": "Double the max stacks of Mejai's Soulstealer, Leviathan, and Sword of the Occult.\n'No no Jarvan I said do OR die'",

@@ -257,17 +257,9 @@ jobs:
       - name: Rebuild native modules for Electron
         run: npm run rebuild
 
-      # The same checks CI runs, before anything is published under a version
-      # number people will install. None of them depend on the version, so they
-      # run before it is written - a failure here leaves main untouched.
-      - name: Formatting
-        run: npm run format:check
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Scoring tests
-        run: npm test
+      # Format, typecheck and tests are not repeated here: main is protected,
+      # so only a commit whose checks passed gets this far, and `npm run dist`
+      # typechecks again as it builds.
 
       # A release should never publish empty by accident. When nobody wrote a
       # section for this version, one is built from the subjects of the commits

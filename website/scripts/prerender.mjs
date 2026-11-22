@@ -75,39 +75,46 @@ async function fetchJsonOnce(url, headers) {
 }
 
 // PostgREST caps a page at 1000 rows and the per-champion grains run to a few
-// hundred thousand, so pages go out in batches rather than one at a time. A
-// batch stops the walk as soon as one of its pages comes up short.
+// hundred thousand. Pages walk the view by keyset, not by offset: an offset
+// makes Postgres scan every skipped row, so deep pages cost more as the view
+// grows and ran into the anon role's 3s statement timeout. A keyset page
+// starts at an index seek and costs the same wherever it is.
 //
-// Batched pages are separate queries, so the view has to hand rows back in a
-// fixed order or one page repeats another's rows and the difference is lost:
-// `order` names a unique key of the view, which the rollups are indexed on.
-const PAGE_BATCH = 8;
+// `order` names a unique key of the view, which the rollups are indexed on,
+// so no row repeats or is skipped between pages.
+
+// Rows strictly after `last` in key order, as a PostgREST `or` filter:
+// (a > x) or (a = x and b > y) or (a = x and b = y and c > z)
+function afterKey(keys, last) {
+  const branches = keys.map((key, i) => {
+    const eq = keys.slice(0, i).map((k) => `${k}.eq.${last[k]}`);
+    return `and(${[...eq, `${key}.gt.${last[key]}`].join(",")})`;
+  });
+  return `&or=(${branches.join(",")})`;
+}
 
 // ARAM Mayhem only. Mayhem Classic games sit in the same views with their own
 // near-disjoint item pool, and a page headed "ARAM Mayhem" must not quote them;
 // the live site defaults to the same queue.
-function fetchPageRows(view, order, from) {
+function fetchPageRows(view, order, last) {
+  const after = last ? afterKey(order.split(","), last) : "";
   return fetchJson(
-    `${SUPABASE_URL}/rest/v1/${view}?select=*&queue_id=eq.${QUEUE_ID_MAYHEM}&order=${order}`,
+    `${SUPABASE_URL}/rest/v1/${view}?select=*&queue_id=eq.${QUEUE_ID_MAYHEM}&order=${order}${after}`,
     {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Range: `${from}-${from + 999}`,
+      Range: "0-999",
     },
   );
 }
 
 async function fetchAllRows(view, order) {
   const out = [];
-  for (let from = 0; ; from += 1000 * PAGE_BATCH) {
-    const offsets = Array.from({ length: PAGE_BATCH }, (_, i) => from + i * 1000);
-    const pages = await Promise.all(offsets.map((offset) => fetchPageRows(view, order, offset)));
-    let done = false;
-    for (const rows of pages) {
-      out.push(...rows);
-      if (rows.length < 1000) done = true;
-    }
-    if (done) return out;
+  for (let last; ; ) {
+    const rows = await fetchPageRows(view, order, last);
+    out.push(...rows);
+    if (rows.length < 1000) return out;
+    last = rows[rows.length - 1];
   }
 }
 

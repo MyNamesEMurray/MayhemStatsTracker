@@ -5,6 +5,7 @@ import {
   applyDescriptions,
   AUGMENT_DESCRIPTIONS_PATH,
   AUGMENT_DESCRIPTIONS_URL,
+  augmentName,
   parseDescriptions,
 } from "../src/shared/augment-descriptions.ts";
 
@@ -81,5 +82,18 @@ describe("the published file", () => {
     // under it is the path it is served at
     assert.equal(AUGMENT_DESCRIPTIONS_PATH, "/augment-descriptions.json");
     assert.ok(AUGMENT_DESCRIPTIONS_URL.endsWith(AUGMENT_DESCRIPTIONS_PATH));
+  });
+});
+
+describe("augmentName", () => {
+  it("falls back when the upstream name is blank or only spaces", () => {
+    assert.equal(augmentName({ nameTRA: "   " }, 3176), "Augment 3176");
+    assert.equal(augmentName({ name: " ", nameTRA: "" }, 7), "Augment 7");
+  });
+
+  it("prefers a real name, and trims it", () => {
+    assert.equal(augmentName({ nameTRA: " Recursion " }, 1), "Recursion");
+    assert.equal(augmentName({ name: "A", nameTRA: "B" }, 1), "A");
+    assert.equal(augmentName({ name: "  ", nameTRA: "B" }, 1), "B");
   });
 });

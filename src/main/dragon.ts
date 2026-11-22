@@ -7,6 +7,7 @@ import { toClientPatch } from "../shared/patch";
 import {
   applyDescriptions,
   AUGMENT_DESCRIPTIONS_URL,
+  augmentName,
   parseDescriptions,
 } from "../shared/augment-descriptions";
 
@@ -150,7 +151,7 @@ export function loadAugmentData() {
       if (Array.isArray(data)) {
         for (const aug of data) {
           augmentCache[aug.id] = {
-            name: aug.name || aug.nameTRA || `Augment ${aug.id}`,
+            name: augmentName(aug, aug.id),
             desc: aug.desc || aug.descriptionTRA || "",
             iconPath: aug.augmentSmallIconPath || aug.iconSmall || aug.iconLarge || "",
             rarity: aug.rarity || "",
@@ -162,7 +163,7 @@ export function loadAugmentData() {
           const numId = parseInt(id);
           if (!isNaN(numId)) {
             augmentCache[numId] = {
-              name: aug.name || aug.nameTRA || `Augment ${numId}`,
+              name: augmentName(aug, numId),
               desc: aug.desc || aug.descriptionTRA || "",
               iconPath: aug.augmentSmallIconPath || aug.iconSmall || aug.iconLarge || "",
               rarity: aug.rarity || "",

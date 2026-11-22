@@ -5,6 +5,7 @@ import { isFinishedItem as isFinishedRawItem } from "../../../src/shared/items.t
 import {
   applyDescriptions,
   AUGMENT_DESCRIPTIONS_PATH,
+  augmentName,
   parseDescriptions,
 } from "../../../src/shared/augment-descriptions.ts";
 
@@ -104,7 +105,7 @@ export async function loadAugmentData(): Promise<AugmentData> {
   if (Array.isArray(data)) {
     for (const aug of data) {
       out[aug.id] = {
-        name: aug.name || aug.nameTRA || `Augment ${aug.id}`,
+        name: augmentName(aug, aug.id),
         desc: aug.desc || aug.descriptionTRA || "",
         iconPath: aug.augmentSmallIconPath || aug.iconSmall || aug.iconLarge || "",
         rarity: aug.rarity || "",

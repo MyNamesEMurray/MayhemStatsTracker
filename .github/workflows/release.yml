@@ -1,7 +1,9 @@
 name: Release
 
 # Cutting a release means: work out the version, build the Windows executables,
-# write the version back into package.json, tag the commit and publish.
+# tag the commit and publish. Nothing is committed back: main is protected, so
+# the version is set only inside the build job, and the release tag is the
+# record of what shipped.
 #
 # It happens three ways:
 #
@@ -16,10 +18,12 @@ name: Release
 # an app release. The gate job below decides, and says why in the run summary
 # either way.
 #
-# The version is a patch bump per app merge - see .github/scripts/next-version.mts
-# for the exact rule and test/next-version.test.mts for what it guarantees. To
-# ship a minor or a major instead, set it in package.json and merge; a version
-# that has never been tagged is taken as deliberate and released as written.
+# The version is a patch bump per app merge on the highest v* tag - see
+# .github/scripts/next-version.mts for the exact rule and
+# test/next-version.test.mts for what it guarantees. package.json is not
+# rewritten by a release, so it can sit behind the tags. To ship a minor or a
+# major instead, set it in package.json in a pull request; a version that has
+# never been tagged is taken as deliberate and released as written.
 #
 # Release notes come from the version's CHANGELOG.md section. A patch release
 # with no section gets an empty body on purpose: the app's update window skips
@@ -197,13 +201,13 @@ jobs:
               echo "> [!WARNING]"
               echo "> **No \`CHANGELOG.md\` section for v$VERSION, so one will be generated.**"
               echo ">"
-              echo "> It is built from the commit subjects above and committed to \`main\`"
-              echo "> alongside the version bump, so this release will not publish empty."
+              echo "> It is built from the commit subjects above and used as this release's"
+              echo "> notes only - it is not committed - so this release will not publish empty."
               echo ">"
               echo "> Commit subjects are written for whoever reads the diff next, not for"
-              echo "> someone deciding whether to click Update. Rewrite the section in"
-              echo "> \`CHANGELOG.md\` and paste it over the release body - it is marked as"
-              echo "> generated until somebody does."
+              echo "> someone deciding whether to click Update. Rewrite the release body on"
+              echo "> GitHub in player language - it is marked as generated until somebody does,"
+              echo "> and add a \`## v$VERSION\` section to \`CHANGELOG.md\` in a pull request."
             } >> "$GITHUB_STEP_SUMMARY"
           else
             {
@@ -266,75 +270,24 @@ jobs:
       # that actually touched the app - website work, Supabase work, release
       # commits and merges are left out, because players cannot see them.
       #
-      # A hand-written section always wins: this only ever fills a gap. Only on
-      # main, because it is committed there in the same commit as the version
-      # bump - a tag push or a run off another branch takes whatever the
+      # A hand-written section always wins: this only ever fills a gap. It is
+      # written to the working copy of CHANGELOG.md in this job and read back by
+      # the publish step below; it is not committed, because main is protected.
+      # Only on main: a tag push or a run off another branch takes whatever the
       # changelog already says.
       - name: Write release notes if there are none
-        id: notes_generated
         if: github.ref == 'refs/heads/main' && needs.gate.outputs.base != ''
         run: |
           RESULT=$(node .github/scripts/generate-changelog.mts \
             "$VERSION" "${{ needs.gate.outputs.base }}")
           echo "Notes for v$VERSION: $RESULT"
-          if [ "${RESULT% *}" = "generated" ]; then
-            echo "generated=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "generated=false" >> "$GITHUB_OUTPUT"
-          fi
 
-      # The version is written and pushed before the build, so the tag lands on
-      # exactly the tree the executables came from rather than on a commit that
-      # only caught up to it afterwards.
-      #
-      # A tag push, or a manual run off some other branch, still needs the
-      # version in place for electron-builder to stamp into the executables -
-      # just not committed to a branch it did not come from.
+      # The version is set inside this job only, for electron-builder to stamp
+      # into the executables. It is not committed: main is protected, and the
+      # release tag created below is the record of what shipped.
       - name: Set the version for the build
-        if: env.BUMP == 'true' && github.ref != 'refs/heads/main'
+        if: env.BUMP == 'true'
         run: npm version "$VERSION" --no-git-tag-version --allow-same-version
-
-      # One commit carries both, because they belong to the same release: the
-      # version it ships as and the notes it ships with. Runs when either has
-      # something to say, so a version already set by hand in package.json
-      # still gets its generated notes committed.
-      - name: Set the version on main
-        id: commit
-        if: >-
-          github.ref == 'refs/heads/main' &&
-          (env.BUMP == 'true' || steps.notes_generated.outputs.generated == 'true')
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          if [ "$BUMP" = "true" ]; then
-            npm version "$VERSION" --no-git-tag-version --allow-same-version
-            git add package.json package-lock.json
-          fi
-          if [ "${{ steps.notes_generated.outputs.generated }}" = "true" ]; then
-            git add CHANGELOG.md
-          fi
-
-          git commit -m "Release v$VERSION" \
-            -m "Cut by .github/workflows/release.yml from ${GITHUB_SHA:0:7}."
-
-          # A push authenticated with GITHUB_TOKEN does not start another run of
-          # this workflow, so there is no loop back into the trigger above.
-          #
-          # Rebasing onto a merge that landed while the checks ran is safe here
-          # precisely because the build comes after: the executables are built
-          # from the rebased tree, so they carry that merge too.
-          pushed=false
-          for _ in 1 2 3; do
-            if git push origin "HEAD:main"; then pushed=true; break; fi
-            echo "main moved while this was running; rebasing onto it"
-            git pull --rebase origin main
-          done
-          if [ "$pushed" != true ]; then
-            echo "::error::Could not push v$VERSION to main after three tries."
-            exit 1
-          fi
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - run: npm run dist
 
@@ -418,12 +371,12 @@ jobs:
           fi
 
       # The tag doesn't exist yet on a merge or a manual run; gh creates it at
-      # --target, which is the version commit when there was one.
+      # --target, the commit this run built.
       - name: Create GitHub release
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
             dist/MayhemTracker-Portable.exe \
             dist/MayhemTracker-Setup.exe \
-            --target "${{ steps.commit.outputs.sha || github.sha }}" \
+            --target "${{ github.sha }}" \
             --title "${{ steps.version.outputs.tag }}" \
             ${{ steps.notes.outputs.args }}

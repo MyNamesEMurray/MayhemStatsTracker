@@ -6,18 +6,16 @@
 // takes the next patch after the highest version players can already download.
 //
 //   tagged 2.14.0, package.json 2.14.0  ->  2.14.1, which the release job
-//                                           writes back into package.json
+//                                           sets for the build only
 //   tagged 2.14.0, package.json 2.15.0  ->  2.15.0, already written
 //
 // The highest released version is read from the v* tags rather than from
-// package.json, because package.json only moves when a release runs while the
-// tags are the record of what actually shipped. A run that built and tagged but
-// failed before pushing the bump would otherwise re-cut the version it just
-// published.
+// package.json, because a release does not rewrite package.json: the tags are
+// the record of what actually shipped.
 
 export interface NextVersion {
   version: string;
-  // Whether package.json still has to be written and pushed for this version
+  // Whether the release job still has to set this version in package.json for the build
   bump: boolean;
 }
 

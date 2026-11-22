@@ -129,7 +129,7 @@ jobs:
           # What the desktop app is built from. Everything else in the
           # repository - website/, supabase/, docs/, the workflows and their
           # scripts, the README - ships without a new executable.
-          APP='^(src/|assets/|scripts/|package\.json$|package-lock\.json$|electron\.vite\.config\.ts$|tsconfig[^/]*\.json$)'
+          APP='^(src/|assets/|website/public/fonts/|package\.json$|package-lock\.json$|electron\.vite\.config\.ts$|tsconfig[^/]*\.json$)'
           APP_CHANGED=$(printf '%s\n' "$CHANGED" | grep -E "$APP" || true)
 
           if [ -z "$APP_CHANGED" ]; then

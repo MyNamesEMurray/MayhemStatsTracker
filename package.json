@@ -26,8 +26,6 @@
     "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
-    "@electron-toolkit/preload": "^3.0.2",
-    "@electron-toolkit/utils": "^4.0.0",
     "@tailwindcss/vite": "^4.2.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.1",

@@ -19,14 +19,13 @@ name: Refresh augment descriptions
 # nobody here controls, so the PR stays in history as the record of what
 # changed. Quiet days finish in under a minute having done nothing.
 #
-# Merging with the workflow token does not trigger checks.yml or release.yml,
-# which is why the gates live in this job. If main ever gets branch protection
-# with required checks, the merge step fails and the PR waits for a human.
-#
-# Opening the PR needs "Allow GitHub Actions to create and approve pull
-# requests" turned on under Settings -> Actions -> General. Without it the run
-# fails on its last step with the regenerated text already pushed to a branch,
-# which is still a signal that something is waiting.
+# The push, the PR and the merge use the PR_TOKEN secret, not the workflow's
+# own token: GitHub does not start workflows for anything the workflow token
+# does, so checks.yml would never run on the PR. PR_TOKEN is a fine-grained
+# personal access token for this repository with Contents and Pull requests
+# read and write. The merge is `--auto`, so it waits for the required checks
+# set in the main branch protection rule, and it fails (leaving the PR open
+# for a human) if that rule is not on.
 on:
   schedule:
     # An hour after the daily site rebuild rather than alongside it
@@ -53,7 +52,19 @@ jobs:
         # pipefail, so a generator that dies mid-pipe fails the step
         shell: bash
     steps:
+      - name: Require PR_TOKEN
+        env:
+          PR_TOKEN: ${{ secrets.PR_TOKEN }}
+        run: |
+          if [ -z "$PR_TOKEN" ]; then
+            echo "::error::No PR_TOKEN secret set, so the pull request would not run its checks."
+            exit 1
+          fi
+
+      # The token is stored in the checkout, so the later push uses it
       - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.PR_TOKEN }}
 
       - uses: actions/setup-node@v7
         with:
@@ -114,7 +125,7 @@ jobs:
       - name: Open a pull request
         if: steps.gen.outputs.changed == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
           NOW_PATCH: ${{ steps.gen.outputs.now_patch }}
           WAS_PATCH: ${{ steps.gen.outputs.was_patch }}
           NOW_COUNT: ${{ steps.gen.outputs.now_count }}
@@ -141,7 +152,7 @@ jobs:
             echo "- Patch \`$WAS_PATCH\` → \`$NOW_PATCH\`"
             echo "- Augments carrying description text: $WAS_COUNT → $NOW_COUNT"
             echo
-            echo "Merged automatically by the workflow. The text is player-visible, and a"
+            echo "Merges itself once the checks pass. The text is player-visible, and a"
             echo "reworded augment changes quietly rather than showing up as a new line,"
             echo "so skim the diff after the fact. The new text reaches the site at its"
             echo "next deploy; the app picks it up in the next release."
@@ -173,4 +184,4 @@ jobs:
               gh pr close "$OLD" --delete-branch --comment "Superseded by #$PR."
             done
 
-          gh pr merge "$PR" --squash --delete-branch
+          gh pr merge "$PR" --auto --squash --delete-branch

@@ -27,6 +27,10 @@ v2.10.0 will. GitHub hides the comment when rendering, and only fixes for
 bugs of our own making need it - a fix for a long-standing bug or something
 on Riot's end is news to everyone, so leave those unmarked.
 
+## v2.14.18 - 2026-11-22
+
+- Augments the game data lists with a blank name, like the Pentakill augment, now show as "Augment 3176" instead of an empty row.
+
 ## v2.14.17 - 2026-11-15
 
 <!-- Written from commit subjects because this version had no section. Rewrite in player language: what changed, and why they would care. -->

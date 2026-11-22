@@ -58,3 +58,10 @@ export function applyDescriptions<T extends { desc?: string }>(
   }
   return augments;
 }
+
+// CommunityDragon ships some augments with a whitespace-only nameTRA (3176, the
+// Pentakill augment, is three spaces). A plain `||` takes that as a name and
+// the augment renders blank, so trim before falling back.
+export function augmentName(aug: { name?: string; nameTRA?: string }, id: number): string {
+  return aug.name?.trim() || aug.nameTRA?.trim() || `Augment ${id}`;
+}
